@@ -70,10 +70,13 @@ await Effect.runPromise(
 );
 
 const origin = `http://127.0.0.1:${a11yPort}`;
+// The server runs as in production, with its secure, host-only session
+// cookie, which Chromium accepts from 127.0.0.1 without HTTPS.
 const server = Bun.spawn(['bun', '.output/server/index.mjs'], {
   env: {
     ...process.env,
     ...Object.fromEntries([
+      ['NODE_ENV', 'production'],
       ['DATABASE_URL', database.url],
       ['PORT', String(a11yPort)],
       ['HOST', '127.0.0.1'],

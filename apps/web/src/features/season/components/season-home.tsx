@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router';
 import { Gift as GiftIcon, PenLine, RotateCcw } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import type { SignedInPerson } from '../../../shared/auth/signed-in-person';
 import { Button } from '../../../shared/ui/button';
@@ -57,6 +57,7 @@ type TakingPartHomeProps = {
 const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
   const [state, setState] = useState<GiftState>(unwrapped ? 'open' : 'closed');
   const [burst, setBurst] = useState(false);
+  const still = useReducedMotion() === true;
   const router = useRouter();
   const { recipient } = view;
 
@@ -69,7 +70,8 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
   }, [state]);
 
   const open = () => {
-    setState('opening');
+    // Without motion, nothing unwraps, so there is nothing to wait for.
+    setState(still ? 'open' : 'opening');
     setBurst(true);
     if (!unwrapped) {
       // Remembering is a nicety. If it fails, the gift is wrapped again on

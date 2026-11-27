@@ -1,21 +1,16 @@
 import { scanWcag22AaViolations } from '@davidvornholt/a11y-testing/axe';
-import type * as playwright from '@playwright/test';
-import { expect, test } from '@playwright/test';
-import { type FamilyName, welcomePath } from './family';
+import { expect } from '@playwright/test';
+import { welcomePath } from './family';
+import { signIn, test } from './fixtures';
 
-const giftHeading = /^Dein Wichtel/u;
 const welcomeAddress = /\/willkommen$/u;
 const listHeading = /^Dein Wunschzettel/u;
 const notALink = /^Das ist kein Link\./u;
 const exampleLink = /example\.com/u;
 const changeScarf = /^Ändern.*Ein warmer Schal$/u;
-const strikeScarf = /^Streichen.*Ein warmer Schal$/u;
-
-const signIn = async (page: playwright.Page, name: FamilyName) => {
-  await page.goto(welcomePath(name));
-  await page.getByRole('button', { name: 'Zu deinem Geschenk' }).click();
-  await expect(page.getByRole('heading', { name: giftHeading })).toBeVisible();
-};
+const strikeThickScarf = /^Streichen.*Ein dicker Schal$/u;
+const openLinkAgain =
+  /öffne deinen Link dann noch einmal aus Davids Nachricht/u;
 
 test('the landing page for a device that is not signed in', async ({
   page,
@@ -44,6 +39,29 @@ test('the greeting after a personal link signs a device in', async ({
   expect(await scanWcag22AaViolations(page)).toEqual([]);
 });
 
+test('a sign-in that fails on the way to the server', async ({ page }) => {
+  let failed = false;
+  await page.route('**/_serverFn/**', (route) => {
+    if (failed || route.request().method() !== 'POST') {
+      return route.fallback();
+    }
+    failed = true;
+    return route.abort('internetdisconnected');
+  });
+  await page.goto(welcomePath('Maximilian'));
+  await expect(
+    page.getByRole('heading', { name: 'Die Anmeldung hat nicht geklappt' }),
+  ).toBeVisible();
+  await expect(page.getByText(openLinkAgain)).toBeVisible();
+  expect(await scanWcag22AaViolations(page)).toEqual([]);
+  // The link from the message works again, also when it opens in this tab,
+  // which only changes the fragment.
+  await page.goto(welcomePath('Maximilian'));
+  await expect(
+    page.getByRole('button', { name: 'Zu deinem Geschenk' }),
+  ).toBeVisible();
+});
+
 test('the wrapped gift and the unwrapped name with its wish list', async ({
   page,
 }) => {
@@ -60,6 +78,37 @@ test('the wrapped gift and the unwrapped name with its wish list', async ({
   await expect(
     page.getByRole('button', { name: 'Noch einmal einpacken' }),
   ).toBeVisible();
+});
+
+test('without motion, the greeting and the gift wait for nothing', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.clock.install();
+  // From here on, no timer fires and no animation frame runs.
+  await page.clock.pauseAt(Date.now() + 60_000);
+  await page.goto(welcomePath('Mara'));
+  const onward = page.getByRole('button', { name: 'Zu deinem Geschenk' });
+  await expect(onward).toBeVisible();
+  // The paper and the card are in place as soon as the greeting appears.
+  const greeting = await page.getByRole('main').evaluate((main) => {
+    const [paper, content] = main.children;
+    const card = content?.firstElementChild;
+    return {
+      paperClip: paper === undefined ? '' : getComputedStyle(paper).clipPath,
+      cardOpacity: card ? getComputedStyle(card).opacity : '',
+    };
+  });
+  expect(greeting).toEqual({
+    paperClip: 'inset(0px 0px 0%)',
+    cardOpacity: '1',
+  });
+  await onward.click();
+  await page.getByRole('button', { name: 'Auspacken' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Wunschzettel von Maximilian' }),
+  ).toBeAttached();
+  await expect(page.getByText('Hörbuch')).toBeAttached();
 });
 
 test('writing, changing, and striking off wishes', async ({ page }) => {
@@ -83,16 +132,35 @@ test('writing, changing, and striking off wishes', async ({ page }) => {
     'href',
     'https://www.example.com/schal',
   );
+  const editedTitle = page.getByLabel('Wunsch', { exact: true });
   await page.getByRole('button', { name: changeScarf }).click();
-  await expect(page.getByLabel('Wunsch', { exact: true })).toBeVisible();
+  await expect(editedTitle).toBeVisible();
   expect(await scanWcag22AaViolations(page)).toEqual([]);
+  // Cancelling keeps the wish as it was.
+  await editedTitle.fill('Ein dicker Schal');
   await page.getByRole('button', { name: 'Abbrechen' }).click();
-  await page.getByRole('button', { name: strikeScarf }).click();
-  await expect(page.getByText('„Ein warmer Schal“ gestrichen.')).toBeVisible();
+  await expect(editedTitle).toBeHidden();
+  await expect(
+    list.getByText('Ein warmer Schal', { exact: true }),
+  ).toBeVisible();
+  // Saving changes it for good.
+  await page.getByRole('button', { name: changeScarf }).click();
+  await editedTitle.fill('Ein dicker Schal');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(editedTitle).toBeHidden();
+  await page.reload();
+  await expect(
+    list.getByText('Ein dicker Schal', { exact: true }),
+  ).toBeVisible();
+  await expect(list.getByText('Ein warmer Schal', { exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByRole('button', { name: strikeThickScarf }).click();
+  await expect(page.getByText('„Ein dicker Schal“ gestrichen.')).toBeVisible();
   expect(await scanWcag22AaViolations(page)).toEqual([]);
   await page.getByRole('button', { name: 'Zurückholen' }).click();
   await expect(
-    list.getByText('Ein warmer Schal', { exact: true }),
+    list.getByText('Ein dicker Schal', { exact: true }),
   ).toBeVisible();
 });
 

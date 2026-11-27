@@ -1,6 +1,6 @@
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import type { SignedInPerson } from '../../../shared/auth/signed-in-person';
 import { Button } from '../../../shared/ui/button';
@@ -25,29 +25,30 @@ const problems = {
     title: 'Der Link ist unvollständig',
     text: 'Öffne ihn noch einmal direkt aus Davids Nachricht, ohne ihn abzutippen.',
   },
+  // Reloading cannot help, because the secret left the address as soon as
+  // the page read it.
   failed: {
     title: 'Die Anmeldung hat nicht geklappt',
-    text: 'Prüfe die Internetverbindung und lade die Seite neu.',
+    text: 'Prüfe die Internetverbindung und öffne deinen Link dann noch einmal aus Davids Nachricht.',
   },
 } as const;
 
 // Reads the secret from the link's fragment, which never reaches a server
 // log, takes it out of the address bar and the history, and signs in with it.
 // The result is kept, because the secret is gone from the address once read
-// and React may run the effect that asks for it twice.
+// and React may run the effect that asks for it twice. A link opened again in
+// the same tab only brings a new fragment, which starts a new sign-in.
 let arrival: Promise<Arrival> | undefined;
 const arrive = (): Promise<Arrival> => {
-  arrival ??= ((): Promise<Arrival> => {
-    const { location, history } = globalThis;
-    const secret = location.hash.slice(1);
+  const { location, history } = globalThis;
+  const secret = location.hash.slice(1);
+  if (secret !== '') {
     history.replaceState(null, '', location.pathname);
-    if (secret === '') {
-      return Promise.resolve({ kind: 'incomplete' } as const);
-    }
-    return redeemInvitation({ data: { token: secret } }).catch(
+    arrival = redeemInvitation({ data: { token: secret } }).catch(
       () => ({ kind: 'failed' }) as const,
     );
-  })();
+  }
+  arrival ??= Promise.resolve({ kind: 'incomplete' } as const);
   return arrival;
 };
 
@@ -67,28 +68,42 @@ const card = {
 // person on their own wrapping paper.
 export const Welcome = () => {
   const [state, setState] = useState<Arrival>({ kind: 'checking' });
+  // Without motion, the paper and the card are simply there.
+  const still = useReducedMotion() === true;
   const router = useRouter();
   const navigate = useNavigate();
 
   useEffect(() => {
     let current = true;
-    arrive()
-      .then(async (result) => {
-        if (result.kind === 'signed-in') {
-          // The frame needs to know who is signed in now.
-          await router.invalidate();
-        }
-        if (current) {
+    const settle = () => {
+      const pending = arrive();
+      // Only the latest sign-in decides what the page shows.
+      const show = (result: Arrival) => {
+        if (current && pending === arrival) {
           setState(result);
         }
-      })
-      .catch(() => {
-        if (current) {
-          setState({ kind: 'failed' });
-        }
-      });
+      };
+      pending
+        .then(async (result) => {
+          if (result.kind === 'signed-in') {
+            // The frame needs to know who is signed in now.
+            await router.invalidate();
+          }
+          show(result);
+        })
+        .catch(() => show({ kind: 'failed' }));
+    };
+    const reopen = () => {
+      if (globalThis.location.hash !== '') {
+        setState({ kind: 'checking' });
+        settle();
+      }
+    };
+    settle();
+    globalThis.addEventListener('hashchange', reopen);
     return () => {
       current = false;
+      globalThis.removeEventListener('hashchange', reopen);
     };
   }, [router]);
 
@@ -126,7 +141,7 @@ export const Welcome = () => {
       <motion.div
         animate={{ clipPath: 'inset(0 0 0% 0)' }}
         className="absolute inset-0"
-        initial={{ clipPath: 'inset(0 0 100% 0)' }}
+        initial={still ? false : { clipPath: 'inset(0 0 100% 0)' }}
         transition={{ duration: 0.9, ease: unrollCurve }}
       >
         <Paper className="size-full" paper={person.paper} tile={1.4} />
@@ -135,7 +150,7 @@ export const Welcome = () => {
         <motion.div
           animate="placed"
           className="bg-card p-7 text-ink shadow-[0_18px_40px_oklch(0.21_0.03_268/0.3)]"
-          initial="arriving"
+          initial={still ? false : 'arriving'}
           variants={card}
         >
           <p className="font-bold text-ink-soft text-sm uppercase tracking-[0.14em]">

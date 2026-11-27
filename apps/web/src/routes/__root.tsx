@@ -4,8 +4,6 @@ import {
   Outlet,
   Scripts,
   useLocation,
-  useNavigate,
-  useRouter,
 } from '@tanstack/react-router';
 import { MotionConfig } from 'motion/react';
 import type { ReactNode } from 'react';
@@ -31,8 +29,6 @@ const RootDocument = ({ children }: { readonly children: ReactNode }) => (
 const RootLayout = () => {
   const { viewer } = Route.useRouteContext();
   const { pathname } = useLocation();
-  const router = useRouter();
-  const navigate = useNavigate();
   const page = <Outlet />;
   return (
     <MotionConfig reducedMotion="user">
@@ -42,8 +38,10 @@ const RootLayout = () => {
         <AppFrame
           onSignOut={async () => {
             await signOut();
-            await router.invalidate();
-            await navigate({ to: '/' });
+            // A new document, because the router keeps what the routes
+            // visited before loaded, such as the recipient, and the next
+            // person using this tab could find it there.
+            globalThis.location.replace('/');
           }}
           person={viewer}
         >
