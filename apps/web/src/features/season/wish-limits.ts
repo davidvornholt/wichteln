@@ -6,9 +6,6 @@ export const wishLimits = {
   url: 2000,
 } as const;
 
-// A link must lead to a web page.
-export const webAddress = /^https?:\/\/\S+$/u;
-
 const hasScheme = /^[a-z][a-z\d+.-]*:/iu;
 
 // People often copy a shop's address without its scheme, such as

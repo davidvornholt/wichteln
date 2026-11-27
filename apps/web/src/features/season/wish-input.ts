@@ -1,7 +1,13 @@
 import { Schema } from 'effect';
-import { webAddress, wishLimits } from './wish-limits';
+import { isWebAddress } from '../../shared/web-address';
+import { wishLimits } from './wish-limits';
 
-const emptyOrWebAddress = new RegExp(`^$|${webAddress.source}`, 'u');
+const isEmptyOrWebAddress = Schema.makeFilter(
+  (url: string) =>
+    url === '' ||
+    isWebAddress(url) ||
+    'Der Link führt nicht zu einer Webseite.',
+);
 
 // An empty optional field arrives as an empty string from the form and is
 // stored as null.
@@ -14,7 +20,7 @@ export const WishInput = Schema.Struct({
     Schema.isMaxLength(wishLimits.title),
   ),
   note: optionalText(wishLimits.note),
-  url: optionalText(wishLimits.url).check(Schema.isPattern(emptyOrWebAddress)),
+  url: optionalText(wishLimits.url).check(isEmptyOrWebAddress),
 });
 export type WishInput = typeof WishInput.Type;
 

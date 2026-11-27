@@ -8,7 +8,11 @@ import {
 } from '../../shared/database-error';
 import { type AdminRefusal, refuse } from './admin-refusal';
 import { groupSeasons, type PersonStatus, type Status } from './admin-status';
-import { type ImportFile, participantsOf } from './import-file';
+import {
+  type ImportedSeason,
+  type ImportFile,
+  participantsOf,
+} from './import-file';
 import { pairProblems } from './pairs';
 
 type AdminError = DatabaseError | AdminRefusal;
@@ -104,6 +108,11 @@ const seasonCommands = (sql: Sql) => {
     year: number,
     names: ReadonlyArray<string>,
   ) {
+    // The newest season is the current one, so an empty one would replace the
+    // running round.
+    if (names.length === 0) {
+      return yield* refuse(`Für ${year} nimmt niemand teil.`);
+    }
     const ids = yield* Effect.forEach(names, personId);
     yield* sql
       .withTransaction(
@@ -205,31 +214,36 @@ const importProblems = (file: ImportFile) =>
       : [`${season.year}:\n${problems.join('\n')}`];
   });
 
-const writeSeason = (sql: Sql, season: ImportFile['seasons'][number]) =>
-  Effect.gen(function* () {
+// Writes by person id, so a name nobody has refuses the whole import instead
+// of quietly dropping that person's part of the season.
+const writeSeason = (sql: Sql, season: ImportedSeason) => {
+  const personId = personIdQuery(sql);
+  const wishesOf = new Map(Object.entries(season.wishes));
+  return Effect.gen(function* () {
     yield* sql`insert into seasons (year) values (${season.year})`;
     yield* Effect.forEach(
       participantsOf(season),
-      (name) => sql`
-        insert into participations (year, person_id)
-        select ${season.year}, id from people where name = ${name}
-      `,
+      (name) =>
+        Effect.gen(function* () {
+          const id = yield* personId(name);
+          yield* sql`
+            insert into participations (year, person_id)
+            values (${season.year}, ${id})
+          `;
+          yield* Effect.forEach(
+            wishesOf.get(name) ?? [],
+            (wish) => sql`
+              insert into wishes (year, person_id, title, note, url)
+              values (${season.year}, ${id}, ${wish.title}, ${wish.note}, ${wish.url})
+            `,
+            { discard: true },
+          );
+        }),
       { discard: true },
     );
     yield* writePairs(sql, season.year, Object.entries(season.pairs));
-    const wishes = Object.entries(season.wishes).flatMap(([name, list]) =>
-      list.map((wish) => ({ name, ...wish })),
-    );
-    yield* Effect.forEach(
-      wishes,
-      (wish) => sql`
-        insert into wishes (year, person_id, title, note, url)
-        select ${season.year}, id, ${wish.title}, ${wish.note}, ${wish.url}
-        from people where name = ${wish.name}
-      `,
-      { discard: true },
-    );
   });
+};
 
 const importCommand = (sql: Sql) =>
   Effect.fn('AdminRepository.importSeasons')(function* (file: ImportFile) {
@@ -255,7 +269,11 @@ const importCommand = (sql: Sql) =>
           );
         }),
       )
-      .pipe(Effect.mapError(databaseFailure('import seasons')));
+      .pipe(
+        Effect.catchTag('SqlError', (cause) =>
+          Effect.fail(databaseFailure('import seasons')(cause)),
+        ),
+      );
   });
 
 const statusQuery = (sql: Sql) =>

@@ -28,7 +28,7 @@ const usage = `Befehle:
   status
   person add <Name> [${papers.join('|')}]
   season open <Jahr> <Name>...
-  season pairs <Jahr> <Schenkende>=<Beschenkte>...
+  season pairs <Jahr>, dann je Zeile <Schenkende>=<Beschenkte> und Strg+D
   link issue <Name>
   link revoke <Name>
   import < datei.json`;
@@ -55,11 +55,24 @@ const isPaper = (value: string): value is Paper =>
   (papers as ReadonlyArray<string>).includes(value);
 
 const parsePair = (pair: string) => {
-  const [giver, recipient, ...extra] = pair.split('=');
+  const [giver, recipient, ...extra] = pair
+    .split('=')
+    .map((name) => name.trim());
   return giver === undefined || recipient === undefined || extra.length > 0
     ? fail(usage)
     : ([giver, recipient] as const);
 };
+
+// One pair per line. The draw comes on stdin, so it stays out of the process
+// arguments, the shell history, and the command line `bun run` echoes.
+const parsePairs = (text: string) =>
+  text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .map(parsePair);
+
+const readStdin = Effect.promise(() => Bun.stdin.text());
 
 const statusLines = ({ people, seasons }: Status) => [
   ...people.map(
@@ -102,10 +115,13 @@ const commands: Record<string, Command> = {
     admin
       .openSeason(parseYear(year), names)
       .pipe(Effect.andThen(say(`Die Saison ${year} ist eröffnet.`))),
-  'season pairs': (admin, [year, ...pairs]) =>
-    admin
-      .setPairs(parseYear(year), pairs.map(parsePair))
-      .pipe(Effect.andThen(say(`Die Paare für ${year} stehen.`))),
+  'season pairs': (admin, [year, ...extra]) => {
+    const season = extra.length > 0 ? fail(usage) : parseYear(year);
+    return readStdin.pipe(
+      Effect.flatMap((text) => admin.setPairs(season, parsePairs(text))),
+      Effect.andThen(say(`Die Paare für ${season} stehen.`)),
+    );
+  },
   'link issue': (admin, [name]) =>
     admin
       .issueLink(required(name))
@@ -119,7 +135,7 @@ const commands: Record<string, Command> = {
       .revokeLinks(required(name))
       .pipe(Effect.andThen(say(`Die Links von ${name} gelten nicht mehr.`))),
   import: (admin) =>
-    Effect.promise(() => Bun.stdin.text()).pipe(
+    readStdin.pipe(
       Effect.map((text) => decodeImportFile(JSON.parse(text))),
       Effect.tap((file) => admin.importSeasons(file)),
       Effect.flatMap((file) =>

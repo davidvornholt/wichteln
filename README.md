@@ -23,10 +23,10 @@ The admin command line runs in the live container on prod-1, so it reaches the p
 bun run --cwd apps/web admin status
 bun run --cwd apps/web admin person add <Name> [paper]
 bun run --cwd apps/web admin season open <year> <Name>...
-bun run --cwd apps/web admin season pairs <year> <giver>=<recipient>...
+bun run --cwd apps/web admin season pairs <year>
 bun run --cwd apps/web admin link issue <Name>
 bun run --cwd apps/web admin link revoke <Name>
 bun run --cwd apps/web admin import < seasons.json
 ```
 
-A new season becomes the current one, and every earlier season moves to the archive. `link issue` prints the new personal link and revokes the person's earlier ones, which signs out their devices.
+`season pairs` reads the draw from standard input, one `giver=recipient` per line: type the lines and end with Ctrl+D. That keeps the draw out of the command line, which `bun run` echoes, and out of the shell history. A new season becomes the current one, and every earlier season moves to the archive. `link issue` prints the new personal link and revokes the person's earlier ones, which signs out their devices.

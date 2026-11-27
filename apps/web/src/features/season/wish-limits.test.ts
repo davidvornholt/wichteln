@@ -1,5 +1,6 @@
 import { expect, it } from 'bun:test';
-import { webAddress, withWebScheme } from './wish-limits';
+import { isWebAddress } from '../../shared/web-address';
+import { withWebScheme } from './wish-limits';
 
 it('a link copied without its scheme becomes a secure web address', () => {
   expect(withWebScheme('amazon.de/dp/123')).toBe('https://amazon.de/dp/123');
@@ -8,7 +9,8 @@ it('a link copied without its scheme becomes a secure web address', () => {
 });
 
 it('only web pages count as links', () => {
-  expect(webAddress.test(withWebScheme('www.example.com/schal'))).toBe(true);
-  expect(webAddress.test(withWebScheme('kein Link'))).toBe(false);
-  expect(webAddress.test(withWebScheme('mailto:mara@example.com'))).toBe(false);
+  expect(isWebAddress(withWebScheme('www.example.com/schal'))).toBe(true);
+  expect(isWebAddress(withWebScheme('kein Link'))).toBe(false);
+  expect(isWebAddress(withWebScheme('mailto:mara@example.com'))).toBe(false);
+  expect(isWebAddress(withWebScheme('example.com:abc/item'))).toBe(false);
 });

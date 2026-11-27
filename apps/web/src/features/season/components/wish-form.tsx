@@ -1,8 +1,9 @@
 import { Check, Plus } from 'lucide-react';
 import { type SubmitEvent, useId, useState } from 'react';
 import { Button } from '../../../shared/ui/button';
+import { isWebAddress } from '../../../shared/web-address';
 import type { Wish } from '../wish';
-import { webAddress, wishLimits, withWebScheme } from '../wish-limits';
+import { wishLimits, withWebScheme } from '../wish-limits';
 
 export type WishDraft = {
   readonly title: string;
@@ -41,7 +42,7 @@ export const WishForm = ({ wish, onSave, onCancel }: WishFormProps) => {
       note: note.trim(),
       url: withWebScheme(url.trim()),
     };
-    if (draft.url !== '' && !webAddress.test(draft.url)) {
+    if (draft.url !== '' && !isWebAddress(draft.url)) {
       setProblem(
         'Das ist kein Link. Kopiere ihn am besten aus der Adresszeile des Browsers.',
       );

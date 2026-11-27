@@ -1,12 +1,22 @@
 import { papers } from '@wichteln/db/papers';
 import { Schema } from 'effect';
+import { isWebAddress } from '../../shared/web-address';
 
 const Name = Schema.Trim.check(Schema.isMinLength(1));
+
+// The archive shows an imported link as one to click, so it must lead to a
+// web page like a link written in the app.
+const WebAddress = Schema.String.check(
+  Schema.makeFilter(
+    (url: string) =>
+      isWebAddress(url) || 'Der Link führt nicht zu einer Webseite.',
+  ),
+);
 
 const ImportedWish = Schema.Struct({
   title: Schema.Trim.check(Schema.isMinLength(1)),
   note: Schema.NullOr(Schema.String),
-  url: Schema.NullOr(Schema.String),
+  url: Schema.NullOr(WebAddress),
 });
 
 // A past season as it was recovered: who gave to whom, if known, and each

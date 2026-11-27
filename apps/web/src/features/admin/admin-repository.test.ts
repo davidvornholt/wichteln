@@ -27,6 +27,31 @@ const refusal = <A, E extends { readonly message: string }>(
     ),
   ).then((error) => error.message);
 
+const seasonYears = () =>
+  run(
+    Effect.gen(function* () {
+      const sql = yield* Database;
+      const rows = yield* sql<{ readonly year: number }>`
+        select year from seasons order by year
+      `;
+      return rows.map((row) => row.year);
+    }),
+  );
+
+const recipientOf = (year: number, giver: string) =>
+  run(
+    Effect.gen(function* () {
+      const sql = yield* Database;
+      const [row] = yield* sql<{ readonly name: string }>`
+        select recipients.name from participations
+        join people as givers on givers.id = participations.person_id
+        join people as recipients on recipients.id = participations.recipient_id
+        where participations.year = ${year} and givers.name = ${giver}
+      `;
+      return row?.name;
+    }),
+  );
+
 beforeAll(async () => {
   database = await createTestDatabase();
   runtime = ManagedRuntime.make(
@@ -95,6 +120,44 @@ it('an import with a broken round writes nothing', async () => {
   expect(status.people.map((person) => person.name)).not.toContain('Kemal');
 });
 
+it('an import that names someone nobody declared writes nothing', async () => {
+  const misspeltWish = await refusal((repository) =>
+    repository.importSeasons({
+      people: [{ name: 'Kemal', paper: 'pflaume' }],
+      seasons: [
+        {
+          year: 2022,
+          pairs: {},
+          wishes: Object.fromEntries([
+            ['Kemal', [{ title: 'Buch', note: null, url: null }]],
+            ['Kemaal', [{ title: 'Schal', note: null, url: null }]],
+          ]),
+        },
+      ],
+    }),
+  );
+  expect(misspeltWish).toBe('Niemand heißt Kemaal.');
+  const misspeltPair = await refusal((repository) =>
+    repository.importSeasons({
+      people: [{ name: 'Kemal', paper: 'pflaume' }],
+      seasons: [
+        {
+          year: 2022,
+          pairs: Object.fromEntries([
+            ['Kemal', 'Paol'],
+            ['Paol', 'Kemal'],
+          ]),
+          wishes: {},
+        },
+      ],
+    }),
+  );
+  expect(misspeltPair).toBe('Niemand heißt Paol.');
+  const status = await admin((repository) => repository.status);
+  expect(status.people.map((person) => person.name)).not.toContain('Kemal');
+  expect(await seasonYears()).toEqual([2023, 2024]);
+});
+
 it('a new person gets a paper nobody has yet', async () => {
   expect(
     await admin((repository) => repository.addPerson('Zoë', undefined)),
@@ -136,10 +199,16 @@ it('a season takes only pairs that form a round', async () => {
       ['Jonas', 'Mara'],
     ]),
   );
-  const status = await admin((repository) => repository.status);
-  expect(status.seasons[0]?.participants.every((each) => each.paired)).toBe(
-    true,
+  expect(await recipientOf(2026, 'Mara')).toBe('Zoë');
+});
+
+it('a season without anyone taking part is refused', async () => {
+  expect(await refusal((repository) => repository.openSeason(2027, []))).toBe(
+    'Für 2027 nimmt niemand teil.',
   );
+  expect(await seasonYears()).toEqual([2023, 2024, 2026]);
+  await admin((repository) => repository.openSeason(2027, ['Mara', 'Jonas']));
+  expect(await seasonYears()).toEqual([2023, 2024, 2026, 2027]);
 });
 
 it('a new link replaces the old one and signs out its devices', async () => {
