@@ -2,7 +2,7 @@
 
 David's family Secret Santa. Each person opens a personal link, which signs their device in, unwraps the name of the person they give to, and writes their own wish list. Earlier years' wish lists stay readable, but not who gave to whom.
 
-It runs on prod-1 at <https://wichteln.vornholt.online> and has no pull request previews, because it holds family data.
+It has no pull request previews, because it holds family data.
 
 ## Develop
 

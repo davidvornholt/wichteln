@@ -96,11 +96,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      # The default Git context builds exactly github.sha. Cached layers keep
-      # their digests while their inputs are unchanged, so prod-1 pulls only
-      # the layers a commit changed. The cache lives in the registry under the
-      # buildcache tag, outside the shared Actions cache quota; nothing
-      # deploys that tag.
+      # The default Git context builds exactly github.sha. The cache lives in
+      # the registry under the buildcache tag, outside the shared Actions
+      # cache quota; nothing deploys that tag.
       - name: Build and push the commit image
         id: build
         uses: docker/build-push-action@v7

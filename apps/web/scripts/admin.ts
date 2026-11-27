@@ -1,15 +1,3 @@
-// The administrator's command line. It runs inside the production container,
-// so it reaches the database the app uses:
-//
-//   bun run admin status
-//   bun run admin person add <name> [paper]
-//   bun run admin season open <year> <name>...
-//   bun run admin season pairs <year> <giver>=<recipient>...
-//   bun run admin link issue <name>
-//   bun run admin link revoke <name>
-//   bun run admin import < seasons.json
-//
-// `link issue` prints the new personal link. Nothing prints who gives to whom.
 import process from 'node:process';
 import { PgLive } from '@wichteln/db/client';
 import { type Paper, papers } from '@wichteln/db/papers';
