@@ -23,11 +23,13 @@
       "persistent": true
     },
     "test": {
-      "outputs": []
+      "outputs": [],
+      "env": ["DATABASE_URL"]
     },
     "test:a11y": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL"]
     }
   }
 }

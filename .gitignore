@@ -2,8 +2,11 @@ node_modules/
 .direnv/
 .turbo/
 dist/
+.output/
 .next/
 *.log
+apps/*/playwright-report/
+apps/*/test-results/
 mise.local.toml
 mise.*.local.toml
 .mise.local.toml

@@ -1,0 +1,147 @@
+// The administrator's command line. It runs inside the production container,
+// so it reaches the database the app uses:
+//
+//   bun run admin status
+//   bun run admin person add <name> [paper]
+//   bun run admin season open <year> <name>...
+//   bun run admin season pairs <year> <giver>=<recipient>...
+//   bun run admin link issue <name>
+//   bun run admin link revoke <name>
+//   bun run admin import < seasons.json
+//
+// `link issue` prints the new personal link. Nothing prints who gives to whom.
+import process from 'node:process';
+import { PgLive } from '@wichteln/db/client';
+import { type Paper, papers } from '@wichteln/db/papers';
+import { Effect, Layer } from 'effect';
+import type { AdminRefusal } from '../src/features/admin/admin-refusal';
+import {
+  AdminRepository,
+  AdminRepositoryLive,
+} from '../src/features/admin/admin-repository';
+import type { Status } from '../src/features/admin/admin-status';
+import { decodeImportFile } from '../src/features/admin/import-file';
+import type { DatabaseError } from '../src/shared/database-error';
+import { publicOrigin } from '../src/shared/env/server';
+
+const usage = `Befehle:
+  status
+  person add <Name> [${papers.join('|')}]
+  season open <Jahr> <Name>...
+  season pairs <Jahr> <Schenkende>=<Beschenkte>...
+  link issue <Name>
+  link revoke <Name>
+  import < datei.json`;
+
+// Wichteln started long after this year, so a smaller one is a typo.
+const earliestYear = 2000;
+
+const fail = (message: string): never => {
+  process.stderr.write(`${message}\n`);
+  process.exit(1);
+};
+
+const say = (line: string) =>
+  Effect.sync(() => process.stdout.write(`${line}\n`));
+
+const parseYear = (value: string | undefined): number => {
+  const year = Number(value);
+  return Number.isInteger(year) && year > earliestYear ? year : fail(usage);
+};
+
+const required = (value: string | undefined): string => value ?? fail(usage);
+
+const isPaper = (value: string): value is Paper =>
+  (papers as ReadonlyArray<string>).includes(value);
+
+const parsePair = (pair: string) => {
+  const [giver, recipient, ...extra] = pair.split('=');
+  return giver === undefined || recipient === undefined || extra.length > 0
+    ? fail(usage)
+    : ([giver, recipient] as const);
+};
+
+const statusLines = ({ people, seasons }: Status) => [
+  ...people.map(
+    (person) =>
+      `${person.name} (${person.paper}): ${person.activeLinks} Link(s), ${person.devices} Gerät(e)`,
+  ),
+  ...seasons.flatMap((season) => [
+    '',
+    String(season.year),
+    ...season.participants.map(
+      (participant) =>
+        `  ${participant.name}: ${participant.paired ? 'gezogen' : 'noch nicht gezogen'}, ${participant.wishes} Wunsch/Wünsche`,
+    ),
+  ]),
+];
+
+type Command = (
+  admin: typeof AdminRepository.Service,
+  args: ReadonlyArray<string>,
+) => Effect.Effect<unknown, AdminRefusal | DatabaseError>;
+
+const commands: Record<string, Command> = {
+  status: (admin) =>
+    admin.status.pipe(
+      Effect.flatMap((status) => say(statusLines(status).join('\n'))),
+    ),
+  'person add': (admin, [name, paper]) => {
+    if (paper !== undefined && !isPaper(paper)) {
+      return Effect.sync(() => fail(usage));
+    }
+    return admin
+      .addPerson(required(name), paper)
+      .pipe(
+        Effect.flatMap((chosen) =>
+          say(`${name} bekommt das Papier ${chosen}.`),
+        ),
+      );
+  },
+  'season open': (admin, [year, ...names]) =>
+    admin
+      .openSeason(parseYear(year), names)
+      .pipe(Effect.andThen(say(`Die Saison ${year} ist eröffnet.`))),
+  'season pairs': (admin, [year, ...pairs]) =>
+    admin
+      .setPairs(parseYear(year), pairs.map(parsePair))
+      .pipe(Effect.andThen(say(`Die Paare für ${year} stehen.`))),
+  'link issue': (admin, [name]) =>
+    admin
+      .issueLink(required(name))
+      .pipe(
+        Effect.flatMap((token) =>
+          say(new URL(`/willkommen#${token}`, publicOrigin()).href),
+        ),
+      ),
+  'link revoke': (admin, [name]) =>
+    admin
+      .revokeLinks(required(name))
+      .pipe(Effect.andThen(say(`Die Links von ${name} gelten nicht mehr.`))),
+  import: (admin) =>
+    Effect.promise(() => Bun.stdin.text()).pipe(
+      Effect.map((text) => decodeImportFile(JSON.parse(text))),
+      Effect.tap((file) => admin.importSeasons(file)),
+      Effect.flatMap((file) =>
+        say(`${file.seasons.length} Saison(s) importiert.`),
+      ),
+    ),
+};
+
+const [group = '', action = '', ...rest] = process.argv.slice(2);
+const [command, args] =
+  group in commands
+    ? [commands[group], [action, ...rest].filter(Boolean)]
+    : [commands[`${group} ${action}`], rest];
+
+await Effect.runPromise(
+  Effect.gen(function* () {
+    const admin = yield* AdminRepository;
+    yield* (command ?? (() => Effect.sync(() => fail(usage))))(admin, args);
+  }).pipe(
+    Effect.catchTag('AdminRefusal', (refusal) =>
+      Effect.sync(() => fail(refusal.message)),
+    ),
+    Effect.provide(AdminRepositoryLive.pipe(Layer.provide(PgLive))),
+  ),
+);

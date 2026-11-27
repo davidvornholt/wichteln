@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Wichteln</title>
+  <defs>
+    <pattern id="dots" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="0.9" fill="#fcfdff" fill-opacity="0.22"/>
+    </pattern>
+  </defs>
+  <rect width="64" height="64" fill="#1f2638"/>
+  <rect width="64" height="64" fill="url(#dots)"/>
+  <rect x="27.5" width="9" height="64" fill="#fcfdff"/>
+  <rect y="27.5" width="64" height="9" fill="#fcfdff"/>
+  <rect x="31.25" width="1.5" height="64" fill="#d22632"/>
+  <rect y="31.25" width="64" height="1.5" fill="#d22632"/>
+  <path d="M8 20 L31 32 L8 44 Z M56 20 L33 32 L56 44 Z" fill="#fcfdff"/>
+  <path d="M21 26 L31 32 L21 38 Z M43 26 L33 32 L43 38 Z" fill="#c9ced7"/>
+  <rect x="28" y="27" width="8" height="10" fill="#d22632"/>
+</svg>
