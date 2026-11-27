@@ -1,0 +1,26 @@
+{
+  "1.4.3": {
+    "aarch64-linux": {
+      "asset": "bun-linux-aarch64.zip",
+      "assetId": 626788529,
+      "sha256": "efa9813da5ed72423bf847f916e8d2c47c0d776add972354026a75e10da9aa21"
+    },
+    "x86_64-linux": {
+      "asset": "bun-linux-x64-baseline.zip",
+      "assetId": 626789490,
+      "sha256": "1fc2edac843102909e3a1be1d8d9802cc6071cf074e67e88231f4ffe0f8b397b"
+    }
+  },
+  "1.4.5": {
+    "aarch64-linux": {
+      "asset": "bun-linux-aarch64.zip",
+      "assetId": 766782468,
+      "sha256": "18656a3bf0ea5641f5796ae4213b75255579a70a0fded2f337933785568cdf84"
+    },
+    "x86_64-linux": {
+      "asset": "bun-linux-x64-baseline.zip",
+      "assetId": 766783535,
+      "sha256": "dcb23a18a1c2fff12d57bcef696dbbb42eb67fde29f43816ecb595459a24c463"
+    }
+  }
+}
