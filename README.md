@@ -7,8 +7,9 @@ It runs on prod-1 at <https://wichteln.vornholt.online> and has no pull request 
 ## Develop
 
 ```sh
-just dev-db-start
+bun install --frozen-lockfile
 just dev-env-generate
+just dev-db-start
 bun run --cwd packages/db db:migrate
 bun run dev
 ```

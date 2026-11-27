@@ -22,7 +22,7 @@ const rootDatabaseUrl = async () => {
   const rootUrl = await Effect.runPromise(Config.String('DATABASE_URL')).catch(
     (cause: unknown) => {
       throw new Error(
-        'DATABASE_URL is not set. Run the tests with `bun --env-file=.env.local test`, after `just dev-db-start` and `just dev-env-generate`.',
+        'DATABASE_URL is not set. Run the tests with `bun --env-file=.env.local test`, after `just dev-env-generate` and `just dev-db-start`.',
         { cause },
       );
     },
