@@ -1,10 +1,10 @@
 name: Publish container
 
-# Each push to main publishes the commit's image while Standards runs. The
-# gate records whether Standards passed on this exact commit, because a squash
-# commit on main is new and the pull request's checks do not cover it; only an
-# image whose gate passed may go to production. Wichteln has no pull request
-# previews, because it holds family data, so this workflow runs for main only.
+# Merging to main releases to production. The image builds while Standards
+# runs, and the release starts only after Standards has passed on this exact
+# commit, because a squash commit on main is new and the pull request's checks
+# do not cover it. Wichteln has no pull request previews, because it holds
+# family data, so this workflow runs for main only.
 on:
   push:
     branches:
@@ -62,8 +62,8 @@ jobs:
 
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
-  # Runs in parallel with the gate. A pushed image runs nowhere until it is
-  # released.
+  # Runs in parallel with the gate. The pushed image runs nowhere until the
+  # release job, which needs the gate, hands its digest to the host.
   build:
     runs-on: ubuntu-latest
     permissions:
@@ -156,3 +156,40 @@ jobs:
             echo "::error::The app exited with $code on SIGTERM instead of 0 or 143"
             exit 1
           fi
+
+  # The host releases only an image whose revision label is the commit in the
+  # job's OIDC token, and it ignores a release from an older run than the one
+  # it serves. Releases and Roll back share one FIFO queue.
+  release:
+    needs:
+      - gate
+      - build
+    if: >-
+      github.repository == 'davidvornholt/wichteln' &&
+      github.ref == 'refs/heads/main' &&
+      needs.gate.outputs.gated-sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    concurrency:
+      group: app-release-wichteln
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - name: Checkout the commit being released
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Release the gated image to production
+        uses: ./.github/actions/app-release
+        with:
+          unit: wichteln
+          host: prod-1.vornholt.online
+          known-host: prod-1.vornholt.online ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFkom7Y24gnBa9X+gUDBZvlCnXiuKTo87ROOtlMpgNH5
+          images: wichteln@${{ needs.build.outputs.digest }}
+          age-key: ${{ secrets.SOPS_AGE_KEY }}
