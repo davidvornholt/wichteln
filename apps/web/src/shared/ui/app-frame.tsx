@@ -13,10 +13,12 @@ type AppFrameProps = {
 };
 
 // The frame around every page of a signed-in person: the edge of their
-// wrapping paper along the top, the countdown, and the tabs.
+// wrapping paper along the top, the countdown, and the tabs. It clips what
+// reaches past the screen, such as the shards and rays of the bursting gift,
+// so the page never grows wider than the phone.
 export const AppFrame = ({ person, onSignOut, children }: AppFrameProps) => (
   <div
-    className="min-h-dvh pb-[calc(4rem+env(safe-area-inset-bottom))]"
+    className="min-h-dvh overflow-clip pb-[calc(4rem+env(safe-area-inset-bottom))]"
     data-accent={person.paper}
   >
     <header className="[view-transition-name:app-header]">

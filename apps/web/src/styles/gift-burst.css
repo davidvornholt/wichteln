@@ -1,0 +1,309 @@
+/* The light of a gift bursting: its glow, rays, flash and shockwaves, the
+   paper inside flooding out and the sheen on the name, and the dark room and
+   the confetti that gift-burst.tsx puts over the page. gift.css describes the
+   order of it all. */
+@layer components {
+  /* Behind the gift, the glow that builds while it charges flares and fades
+     as it bursts, and rays in the colour inside sweep out. */
+  .gift-light {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .gift-aura {
+    position: absolute;
+    inset: -35%;
+  }
+
+  .gift[data-state="opening"] .gift-aura {
+    animation: aura-burst 950ms ease-out var(--burst) both;
+  }
+
+  .gift-aura-charge {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      closest-side,
+      var(--glow),
+      color-mix(in oklch, var(--glow) 40%, transparent) 45%,
+      transparent
+    );
+    opacity: 0;
+  }
+
+  .gift[data-state="opening"] .gift-aura-charge {
+    animation: aura-charge var(--charge) linear both;
+  }
+
+  .gift-rays {
+    position: absolute;
+    inset: -80%;
+    background: repeating-conic-gradient(
+      from 8deg,
+      color-mix(in oklch, var(--glow) 45%, white) 0deg 3.5deg,
+      transparent 3.5deg 15deg
+    );
+    mask-image: radial-gradient(closest-side, black 16%, transparent 92%);
+    opacity: 0;
+  }
+
+  .gift[data-state="opening"] .gift-rays {
+    animation: rays 1900ms cubic-bezier(0.15, 0.7, 0.3, 1) var(--burst) both;
+  }
+
+  /* In front of the gift, a white-hot flash from the knot covers the moment
+     the paper breaks, and square shockwaves run out and turn. The flash adds
+     light rather than paint, so the shards stay visible through it. */
+  .gift-flash {
+    position: absolute;
+    inset: -30%;
+    background: radial-gradient(
+      closest-side,
+      white,
+      var(--light) 22%,
+      color-mix(in oklch, var(--glow) 55%, transparent) 55%,
+      transparent
+    );
+    mix-blend-mode: plus-lighter;
+    opacity: 0;
+  }
+
+  .gift[data-state="opening"] .gift-flash {
+    animation: flash 420ms cubic-bezier(0.2, 0.7, 0.3, 1) var(--burst) both;
+  }
+
+  .gift-wave {
+    --wave-delay: 0ms;
+    --wave-turn: 7deg;
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--light);
+    opacity: 0;
+  }
+
+  .gift-wave[data-wave="glow"] {
+    --wave-delay: 70ms;
+    --wave-turn: -10deg;
+    border-color: var(--glow);
+    border-width: 7px;
+  }
+
+  .gift-wave[data-wave="thin"] {
+    --wave-delay: 170ms;
+    --wave-turn: 16deg;
+    border-width: 1.5px;
+  }
+
+  .gift[data-state="opening"] .gift-wave {
+    /* Forwards only: a wave waiting for its moment stays unseen. */
+    animation: wave 950ms cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+    animation-delay: calc(var(--burst) + var(--wave-delay));
+  }
+
+  /* The paper inside floods out from the middle as the shards leave, and a
+     sheen runs across it once the last letter has landed. */
+  .gift[data-state="opening"] .gift-flood {
+    animation: flood 460ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--burst) backwards;
+  }
+
+  .gift-sheen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .gift-sheen::before {
+    position: absolute;
+    inset-block: -20%;
+    inset-inline-start: -60%;
+    inline-size: 45%;
+    content: "";
+    background: linear-gradient(
+      100deg,
+      transparent,
+      oklch(1 0 0 / 0.75) 50%,
+      transparent
+    );
+    opacity: 0;
+    transform: skewX(-14deg);
+    animation: sheen 950ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    animation-delay: calc(
+      var(--name) +
+      var(--letters) *
+      var(--letter-stagger) +
+      260ms
+    );
+  }
+
+  /* gift-burst.tsx puts these over the page, under the gift. The room
+     darkens while the gift charges and lifts once the name has landed. */
+  .gift-room,
+  .gift-room-flash,
+  .gift-confetti {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .gift-room,
+  .gift-room-flash {
+    z-index: 40;
+  }
+
+  .gift-room {
+    animation: room-darken var(--charge) cubic-bezier(0.5, 0, 0.8, 0.6) both;
+  }
+
+  .gift-room-shade {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--x) var(--y),
+      color-mix(in oklch, var(--glow) 30%, oklch(0.14 0.02 268 / 0.55)),
+      oklch(0.12 0.02 268 / 0.9) 70vmax
+    );
+    animation: room-lift 1100ms ease-in-out calc(var(--name) + 480ms) both;
+  }
+
+  .gift-room-flash {
+    background: color-mix(in oklch, var(--glow) 35%, white);
+    opacity: 0;
+    animation: room-flash 650ms cubic-bezier(0.1, 0.6, 0.3, 1) var(--burst) both;
+  }
+
+  .gift-confetti {
+    z-index: 50;
+    block-size: 100%;
+    inline-size: 100%;
+  }
+}
+
+/* The glow behind the gift builds unsteadily, flickering as it nears the
+   burst. */
+@keyframes aura-charge {
+  0% {
+    opacity: 0;
+    scale: 0.55;
+  }
+  55% {
+    opacity: 0.55;
+    scale: 0.8;
+  }
+  70% {
+    opacity: 0.4;
+  }
+  76% {
+    opacity: 0.75;
+  }
+  83% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+    scale: 1.08;
+  }
+}
+
+@keyframes aura-burst {
+  18% {
+    opacity: 1;
+    scale: 1.5;
+  }
+  100% {
+    opacity: 0;
+    scale: 2.3;
+  }
+}
+
+@keyframes rays {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+    rotate: 0deg;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.5;
+    rotate: 32deg;
+  }
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0;
+    scale: 0.3;
+  }
+  8% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.9;
+  }
+}
+
+@keyframes wave {
+  0% {
+    opacity: 1;
+    scale: 0.55;
+    rotate: 0deg;
+  }
+  100% {
+    opacity: 0;
+    scale: 3;
+    rotate: var(--wave-turn);
+  }
+}
+
+@keyframes flood {
+  from {
+    clip-path: inset(50%);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes sheen {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 1;
+    translate: 420% 0;
+  }
+}
+
+@keyframes room-darken {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes room-lift {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes room-flash {
+  0% {
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}

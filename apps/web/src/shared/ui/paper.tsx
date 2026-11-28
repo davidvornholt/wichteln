@@ -26,7 +26,7 @@ export const Paper = ({
   <div
     className={classNames('paper', className)}
     data-paper={paper}
-    // biome-ignore lint/nursery/noInlineStyles: The pattern's scale and the snippets' flight paths are data, not design tokens.
+    // biome-ignore lint/nursery/noInlineStyles: The pattern's scale and where the print sits inside a shard are data, not design tokens.
     style={paperStyle(tile, style)}
   >
     {children}

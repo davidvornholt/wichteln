@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router';
 import { Gift as GiftIcon, PenLine, RotateCcw } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import type { SignedInPerson } from '../../../shared/auth/signed-in-person';
 import { Button } from '../../../shared/ui/button';
@@ -8,7 +8,8 @@ import { buttonClass } from '../../../shared/ui/button-class';
 import { markUnwrapped } from '../server-fns';
 import type { SeasonView } from '../wish';
 import { Gift } from './gift';
-import { type GiftState, openingMilliseconds } from './gift-state';
+import type { GiftState } from './gift-state';
+import { openingMilliseconds, unwrapVibration } from './gift-timing';
 import { RecipientWishes } from './recipient-wishes';
 
 type TakingPart = Extract<SeasonView, { readonly kind: 'taking-part' }>;
@@ -48,6 +49,19 @@ const EmptyOwnList = () => (
   </aside>
 );
 
+// Phones that can vibrate feel the gift charge and burst. Others, such as
+// iPhones, simply don't.
+const vibrate = (pattern: ReadonlyArray<number>) => {
+  if (typeof navigator.vibrate === 'function') {
+    navigator.vibrate([...pattern]);
+  }
+};
+
+// Asked at the moment of unwrapping rather than when the page loads, so a
+// setting changed in between counts.
+const prefersStillness = () =>
+  globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 type TakingPartHomeProps = {
   readonly person: SignedInPerson;
   readonly view: TakingPart;
@@ -57,7 +71,6 @@ type TakingPartHomeProps = {
 const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
   const [state, setState] = useState<GiftState>(unwrapped ? 'open' : 'closed');
   const [burst, setBurst] = useState(false);
-  const still = useReducedMotion() === true;
   const router = useRouter();
   const { recipient } = view;
 
@@ -69,10 +82,28 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
     return () => clearTimeout(done);
   }, [state]);
 
+  // The vibration stops with the burst, also when the person wraps the gift
+  // again or leaves the page before it ends.
+  useEffect(() => {
+    if (!burst) {
+      return;
+    }
+    return () => vibrate([]);
+  }, [burst]);
+
   const open = () => {
-    // Without motion, nothing unwraps, so there is nothing to wait for.
+    // Without motion, nothing unwraps, so there is nothing to wait for and
+    // nothing bursts.
+    const still = prefersStillness();
     setState(still ? 'open' : 'opening');
-    setBurst(true);
+    if (!still) {
+      setBurst(true);
+      vibrate(
+        unwrapVibration(
+          recipient === null ? 0 : Array.from(recipient.name).length,
+        ),
+      );
+    }
     if (!unwrapped) {
       // Remembering is a nicety. If it fails, the gift is wrapped again on
       // the next visit, which is the safe side to fail on.
@@ -90,6 +121,7 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
       </p>
       <Gift
         burst={burst}
+        onBurstDone={() => setBurst(false)}
         onOpen={open}
         recipient={recipient}
         state={state}

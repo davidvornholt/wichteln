@@ -57,7 +57,12 @@
       animation: none;
     }
 
-    .gift-snippets {
+    .gift-light,
+    .gift-shards,
+    .gift-sheen,
+    .gift-room,
+    .gift-room-flash,
+    .gift-confetti {
       display: none;
     }
   }
