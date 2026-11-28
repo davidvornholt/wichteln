@@ -1,22 +1,43 @@
 /* The gift on the home page and its unwrapping. While the gift is closed it
-   shakes now and then. When it opens, every step starts at a delay after the
-   button press, so the sequence reads top to bottom: the tag drops and the
-   bow flies off, the ribbon slides away, the four flaps open towards the
-   viewer, and the card with the name rises with its letters. A gift that was
-   already unwrapped on this device starts open and skips all of it. */
+   shakes now and then. When it opens, every step starts at a moment from
+   gift-timing.ts, which the gift sets as --charge, --burst and --name:
+
+   1. Charge. The gift swells and rumbles harder and harder, a glow builds
+      behind it, and cracks of light in the colour of the paper inside run
+      out from the knot through the wrapping.
+   2. Burst. A flash and square shockwaves, rays sweep out, the paper breaks
+      along its cracks into shards that tumble towards the viewer, and the
+      bow and the tag fly off. gift-burst.tsx darkens the room around the gift
+      and fills the screen with confetti and sparks.
+   3. Name. The paper inside floods out from the middle, the card springs up,
+      the letters of the name slam down, and a sheen runs across it.
+
+   A gift that was already unwrapped on this device starts open and skips all
+   of it. */
 @layer components {
   .gift {
-    --unwrap-ease: cubic-bezier(0.7, 0, 0.2, 1);
-    --flaps-start: 420ms;
-    --flap-stagger: 60ms;
+    --light: oklch(0.985 0.035 95);
+  }
+
+  /* Above the darkened room while it unwraps. */
+  .gift[data-state="opening"] {
+    z-index: 45;
+    animation: gift-impact 620ms cubic-bezier(0.2, 0.8, 0.3, 1) var(--burst)
+      both;
   }
 
   .gift-body {
-    transition: translate 200ms ease-out;
+    transition:
+      translate 200ms ease-out,
+      scale 140ms ease-out;
   }
 
   .gift[data-state="closed"] .gift-body {
     animation: gift-shake 5s ease-in-out 1.6s infinite;
+  }
+
+  .gift[data-state="closed"] .gift-body[data-can-open="true"]:active {
+    scale: 0.97;
   }
 
   @media (hover: hover) {
@@ -25,123 +46,30 @@
     }
   }
 
-  /* The flap only turns. Its faces fade, because opacity on the flap itself
-     would flatten it and show the patterned front where the plain back
-     belongs. */
-  .gift-flap {
+  .gift[data-state="opening"] .gift-body {
+    animation: gift-charge var(--charge) cubic-bezier(0.45, 0, 0.9, 0.7) both;
+  }
+
+  /* The dark paper and the ribbon tied around it. The ribbon is white with a
+     thin line in the person's colour, 13% of the gift wide. */
+  .gift-print {
     position: absolute;
-    inset: 0;
-    transform-style: preserve-3d;
-    transition: transform 950ms var(--unwrap-ease);
-    transition-delay: calc(
-      var(--flaps-start) +
-      var(--flap) *
-      var(--flap-stagger)
-    );
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    block-size: 100%;
+    inline-size: 100%;
   }
 
-  .gift-flap-face {
-    position: absolute;
-    inset: 0;
-    backface-visibility: hidden;
-    clip-path: var(--front);
-    transition: opacity 260ms ease-in;
-    transition-delay: calc(
-      var(--flaps-start) +
-      640ms +
-      var(--flap) *
-      var(--flap-stagger)
-    );
-  }
-
-  /* The inside of wrapping paper is plain. The back face is the front face
-     mirrored, because it is turned half a turn before the flap opens. */
-  .gift-flap-back {
-    clip-path: var(--back);
-    transform: var(--back-turn);
-    background: linear-gradient(160deg, var(--color-card), var(--color-line));
-  }
-
-  /* Each flap is hinged on one edge and turns its free point towards the
-     viewer. */
-  .gift-flap[data-side="top"] {
-    --flap: 0;
-    --front: polygon(0 0, 100% 0, 50% 50%);
-    --back: polygon(0 100%, 100% 100%, 50% 50%);
-    --back-turn: rotateX(180deg);
-    transform-origin: 50% 0%;
-    transform: perspective(900px) rotateX(0deg);
-  }
-
-  .gift-flap[data-side="right"] {
-    --flap: 1;
-    --front: polygon(100% 0, 100% 100%, 50% 50%);
-    --back: polygon(0 0, 0 100%, 50% 50%);
-    --back-turn: rotateY(180deg);
-    transform-origin: 100% 50%;
-    transform: perspective(900px) rotateY(0deg);
-  }
-
-  .gift-flap[data-side="bottom"] {
-    --flap: 2;
-    --front: polygon(0 100%, 100% 100%, 50% 50%);
-    --back: polygon(0 0, 100% 0, 50% 50%);
-    --back-turn: rotateX(180deg);
-    transform-origin: 50% 100%;
-    transform: perspective(900px) rotateX(0deg);
-  }
-
-  .gift-flap[data-side="left"] {
-    --flap: 3;
-    --front: polygon(0 0, 0 100%, 50% 50%);
-    --back: polygon(100% 0, 100% 100%, 50% 50%);
-    --back-turn: rotateY(180deg);
-    transform-origin: 0% 50%;
-    transform: perspective(900px) rotateY(0deg);
-  }
-
-  .gift[data-state="opening"] .gift-flap-face {
-    opacity: 0;
-  }
-
-  .gift[data-state="opening"] .gift-flap[data-side="top"] {
-    transform: perspective(900px) rotateX(168deg);
-  }
-
-  .gift[data-state="opening"] .gift-flap[data-side="right"] {
-    transform: perspective(900px) rotateY(168deg);
-  }
-
-  .gift[data-state="opening"] .gift-flap[data-side="bottom"] {
-    transform: perspective(900px) rotateX(-168deg);
-  }
-
-  .gift[data-state="opening"] .gift-flap[data-side="left"] {
-    transform: perspective(900px) rotateY(-168deg);
-  }
-
-  .gift-creases {
-    transition: opacity 200ms linear var(--flaps-start);
-  }
-
-  .gift[data-state="opening"] .gift-creases {
-    opacity: 0;
-  }
-
-  /* The ribbon is white with a thin line in the person's colour, 13% of the
-     gift wide. */
   .gift-ribbon {
     position: absolute;
     background-color: var(--color-card);
     box-shadow: 0 0 0 1px oklch(0.21 0.03 268 / 0.25);
-    transition: translate 500ms cubic-bezier(0.6, 0, 0.9, 0.4) 160ms;
   }
 
-  .gift-ribbon[data-side="top"],
-  .gift-ribbon[data-side="bottom"] {
+  .gift-ribbon[data-axis="down"] {
+    inset-block: 0;
     inset-inline-start: 43.5%;
     inline-size: 13%;
-    block-size: 50%;
     background-image: linear-gradient(
       90deg,
       transparent calc(50% - 1.5px),
@@ -150,11 +78,10 @@
     );
   }
 
-  .gift-ribbon[data-side="left"],
-  .gift-ribbon[data-side="right"] {
+  .gift-ribbon[data-axis="across"] {
+    inset-inline: 0;
     inset-block-start: 43.5%;
     block-size: 13%;
-    inline-size: 50%;
     background-image: linear-gradient(
       0deg,
       transparent calc(50% - 1.5px),
@@ -163,36 +90,100 @@
     );
   }
 
-  .gift-ribbon[data-side="top"] {
-    inset-block-start: 0;
+  /* The whole paper, until the moment it bursts. */
+  .gift-surface {
+    position: absolute;
+    inset: 0;
   }
 
-  .gift-ribbon[data-side="bottom"] {
-    inset-block-end: 0;
+  .gift[data-state="opening"] .gift-surface {
+    animation: gift-vanish 1ms linear var(--burst) both;
   }
 
-  .gift-ribbon[data-side="left"] {
-    inset-inline-start: 0;
+  /* Each crack lights up as far from the knot as it starts, so the light
+     spreads out from the middle. A blurred wide line in the colour inside
+     glows around a thin white-hot one. */
+  .gift-cracks {
+    position: absolute;
+    inset: 0;
+    block-size: 100%;
+    inline-size: 100%;
+    overflow: visible;
+    opacity: 0;
   }
 
-  .gift-ribbon[data-side="right"] {
-    inset-inline-end: 0;
+  .gift-cracks line {
+    fill: none;
+    stroke-linecap: square;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
   }
 
-  .gift[data-state="opening"] .gift-ribbon[data-side="top"] {
-    translate: 0 -104%;
+  .gift-cracks[data-layer="glow"] {
+    filter: blur(3px);
   }
 
-  .gift[data-state="opening"] .gift-ribbon[data-side="bottom"] {
-    translate: 0 104%;
+  .gift-cracks[data-layer="glow"] line {
+    stroke: var(--glow);
+    stroke-width: 2.8;
   }
 
-  .gift[data-state="opening"] .gift-ribbon[data-side="left"] {
-    translate: -104% 0;
+  .gift-cracks[data-layer="core"] line {
+    stroke: var(--light);
+    stroke-width: 0.7;
   }
 
-  .gift[data-state="opening"] .gift-ribbon[data-side="right"] {
-    translate: 104% 0;
+  .gift[data-state="opening"] .gift-cracks {
+    animation: cracks-brighten var(--charge) ease-in both;
+  }
+
+  .gift[data-state="opening"] .gift-cracks line {
+    animation: crack-grow 280ms cubic-bezier(0.3, 0, 0.2, 1) both;
+    animation-delay: calc(var(--charge) * (0.22 + var(--reach) * 1.15));
+  }
+
+  /* The broken paper takes the whole paper's place as it bursts. Each shard
+     only turns and moves; its faces fade, because opacity on the shard itself
+     would flatten it. The back of the paper is plain, and mirrored, because
+     it is turned half a turn. */
+  .gift-shards {
+    position: absolute;
+    inset: 0;
+    perspective: 900px;
+    opacity: 0;
+  }
+
+  .gift[data-state="opening"] .gift-shards {
+    animation: gift-appear 1ms linear var(--burst) both;
+  }
+
+  .gift-shard {
+    position: absolute;
+    transform-style: preserve-3d;
+  }
+
+  .gift-shard-face {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    backface-visibility: hidden;
+    clip-path: var(--front-clip);
+  }
+
+  .gift-shard-back {
+    clip-path: var(--back-clip);
+    transform: rotateY(180deg);
+    background: linear-gradient(160deg, var(--color-card), var(--color-line));
+  }
+
+  .gift[data-state="opening"] .gift-shard {
+    animation: shard-fly var(--fly) both;
+    animation-delay: calc(var(--burst) + var(--delay));
+  }
+
+  .gift[data-state="opening"] .gift-shard-face {
+    animation: shard-fade var(--fly) linear both;
+    animation-delay: calc(var(--burst) + var(--delay));
   }
 
   .gift-bow {
@@ -205,7 +196,8 @@
   }
 
   .gift[data-state="opening"] .gift-bow {
-    animation: bow-off 550ms ease-in both;
+    animation: bow-launch 900ms cubic-bezier(0.2, 0.6, 0.35, 1) var(--burst)
+      both;
   }
 
   /* The tag hangs from the knot: its box starts at the centre of the gift
@@ -227,14 +219,8 @@
   }
 
   .gift[data-state="opening"] .gift-tag {
-    animation: tag-off 450ms ease-in both;
-  }
-
-  /* Offcuts of everyone's paper. Each one's own distances, spin, and delay
-     come from paper-snippets.tsx. */
-  .gift-snippet {
-    position: absolute;
-    animation: snippet 1500ms both;
+    animation: tag-launch 620ms cubic-bezier(0.15, 0.6, 0.4, 1) var(--burst)
+      both;
   }
 }
 
@@ -258,20 +244,117 @@
   }
 }
 
-@keyframes bow-off {
-  30% {
-    transform: translateY(-8%) scale(1.18) rotate(-8deg);
-  }
+@keyframes gift-impact {
+  0%,
   100% {
-    opacity: 0;
-    transform: translateY(-150%) scale(0.7) rotate(24deg);
+    translate: 0 0;
+  }
+  9% {
+    translate: -1.3% 1.8%;
+  }
+  21% {
+    translate: 1.5% -1.1%;
+  }
+  35% {
+    translate: -0.9% 0.6%;
+  }
+  52% {
+    translate: 0.5% -0.3%;
+  }
+  72% {
+    translate: -0.2% 0.1%;
   }
 }
 
-@keyframes tag-off {
+/* Opacity, not visibility: Chrome keeps a finished one-step visibility
+   animation at its first value. */
+@keyframes gift-vanish {
+  from {
+    opacity: 1;
+  }
   to {
     opacity: 0;
-    transform: translateY(70%) rotate(18deg);
+  }
+}
+
+@keyframes gift-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cracks-brighten {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes crack-grow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* A shard is blown out towards the viewer, slows, and falls as it tumbles. */
+@keyframes shard-fly {
+  0% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+    animation-timing-function: cubic-bezier(0.1, 0.75, 0.35, 1);
+  }
+  42% {
+    transform: translate3d(var(--tx), var(--ty), var(--tz))
+      rotateX(calc(var(--rx) * 0.55)) rotateY(calc(var(--ry) * 0.55))
+      rotateZ(calc(var(--rz) * 0.55));
+    animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.5);
+  }
+  100% {
+    transform: translate3d(
+        calc(var(--tx) * 1.18),
+        calc(var(--ty) + var(--fall)),
+        calc(var(--tz) * 1.25)
+      )
+      rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
+  }
+}
+
+@keyframes shard-fade {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The bow shoots up off the screen, spinning. */
+@keyframes bow-launch {
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-640%) rotate(720deg) scale(1.4);
+  }
+}
+
+/* The blast throws the tag off the knot, spinning, before the name lands. */
+@keyframes tag-launch {
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-150%, 170%) rotate(-210deg) scale(1.15);
   }
 }
 
@@ -282,30 +365,5 @@
   }
   50% {
     transform: rotate(3deg);
-  }
-}
-
-/* An offcut of paper flies out from the centre, turns, and falls. */
-@keyframes snippet {
-  0% {
-    opacity: 0;
-    transform: translate(0, 0) rotate(0deg);
-    animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1);
-  }
-  6% {
-    opacity: 1;
-  }
-  40% {
-    transform: translate(calc(var(--dx) * 0.8), var(--dy))
-      rotate(calc(var(--turn) * 0.45));
-    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
-  }
-  70% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(var(--dx), calc(var(--dy) + var(--fall)))
-      rotate(var(--turn));
   }
 }

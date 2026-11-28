@@ -1,12 +1,20 @@
 import type { Paper as PaperName } from '@wichteln/db/papers';
 import { motion } from 'motion/react';
+import { type CSSProperties, useRef } from 'react';
 import { FitName } from '../../../shared/ui/fit-name';
 import { Paper } from '../../../shared/ui/paper';
-import { RisingLetters } from '../../../shared/ui/rising-letters';
+import { GiftBurst } from './gift-burst';
+import { GiftLightBehind, GiftLightInFront } from './gift-light';
 import type { GiftState } from './gift-state';
 import { GiftTag } from './gift-tag';
-import { GiftBow, GiftRibbon, GiftWrapping } from './gift-wrapping';
-import { PaperSnippets } from './paper-snippets';
+import {
+  burstMilliseconds,
+  inSeconds,
+  nameMilliseconds,
+  timingStyle,
+} from './gift-timing';
+import { GiftBow, GiftShards, GiftSurface } from './gift-wrapping';
+import { SlammingLetters } from './slamming-letters';
 
 type Person = { readonly name: string; readonly paper: PaperName };
 
@@ -17,16 +25,16 @@ type GiftProps = {
   // The person inside, once the gift opens.
   readonly recipient: Person | null;
   readonly onOpen: () => void;
-  // True from the moment the person unwraps the gift on this page, so the
-  // burst of paper plays to its end after the gift is open.
+  // True from the moment the person unwraps the gift on this page until the
+  // last confetti has fallen, which is after the gift counts as open.
   readonly burst: boolean;
+  readonly onBurstDone: () => void;
 };
 
-// The card rises once the flaps are halfway open, and the letters of the
-// name follow it.
-const cardDelay = 0.62;
-const lettersDelay = 0.85;
-const cardStartScale = 0.82;
+// The card springs up from the middle as the shards leave it.
+const cardAfterBurst = 40;
+const cardStart = { scale: 0.3, opacity: 0, rotate: -10 } as const;
+const cardSpring = { type: 'spring', stiffness: 320, damping: 15 } as const;
 
 type RevealedNameProps = {
   readonly recipient: Person;
@@ -35,57 +43,79 @@ type RevealedNameProps = {
 };
 
 // What the opened gift holds: the name of the person to give to, on a card in
-// their own wrapping paper.
+// their own wrapping paper, which floods out from the middle as the gift
+// bursts.
 const RevealedName = ({ recipient, animate }: RevealedNameProps) => (
-  <Paper className="absolute inset-0" paper={recipient.paper} tile={1.1}>
+  <Paper
+    className="gift-flood absolute inset-0"
+    paper={recipient.paper}
+    tile={1.1}
+  >
     <motion.div
-      animate={{ scale: 1, opacity: 1 }}
+      animate={{ scale: 1, opacity: 1, rotate: 0 }}
       className="absolute inset-[9%] flex flex-col justify-center bg-card px-[7%] text-ink shadow-[0_10px_30px_oklch(0.21_0.03_268/0.25)]"
-      initial={animate ? { scale: cardStartScale, opacity: 0 } : false}
+      initial={animate ? cardStart : false}
       transition={{
-        delay: cardDelay,
-        type: 'spring',
-        stiffness: 260,
-        damping: 22,
+        ...cardSpring,
+        delay: inSeconds(burstMilliseconds + cardAfterBurst),
       }}
     >
       <p className="font-bold text-[4cqi] text-ink-soft uppercase tracking-[0.14em]">
         Du beschenkst
       </p>
       <FitName className="mt-[2cqi]" name={recipient.name}>
-        <RisingLetters
+        <SlammingLetters
           animate={animate}
-          delay={lettersDelay}
+          delay={inSeconds(nameMilliseconds)}
           text={recipient.name}
         />
       </FitName>
     </motion.div>
+    {animate ? <span aria-hidden="true" className="gift-sheen" /> : null}
   </Paper>
 );
 
+const giftStyle = (recipient: Person | null): CSSProperties =>
+  ({
+    ...timingStyle,
+    '--glow':
+      recipient === null
+        ? 'var(--color-card)'
+        : `var(--color-${recipient.paper})`,
+    '--letters': recipient === null ? 0 : Array.from(recipient.name).length,
+  }) as CSSProperties;
+
 // The gift on the home page. It stays wrapped, shaking now and then, until the
-// person unwraps it. The bow flies off, the ribbon slides away, the paper
-// opens in four flaps, and offcuts of everyone's paper burst out around the
-// name inside. styles/gift.css holds the choreography.
+// person unwraps it. Then it swells and rumbles while cracks of light in the
+// colour of the paper inside run through its wrapping, bursts into shards,
+// and the name inside slams down letter by letter. styles/gift.css holds the
+// choreography and gift-burst.tsx what happens beyond the gift's box.
 export const Gift = ({
   state,
   viewer,
   recipient,
   onOpen,
   burst,
+  onBurstDone,
 }: GiftProps) => {
+  const giftRef = useRef<HTMLDivElement>(null);
   const canOpen = state === 'closed' && recipient !== null;
+  const opening = state === 'opening';
   // The gift shrinks on short screens, so the heading above it and the button
   // below it stay in view without scrolling.
   return (
     <div
       className="gift relative mx-auto w-full max-w-[clamp(16rem,calc(100svh_-_25rem),24rem)] md:max-w-[clamp(16rem,calc(100svh_-_25rem),28rem)]"
       data-state={state}
+      ref={giftRef}
+      // biome-ignore lint/nursery/noInlineStyles: The timing comes from gift-timing.ts, and the light takes the colour of the paper inside.
+      style={giftStyle(recipient)}
     >
       <div
         aria-hidden="true"
-        className="absolute inset-x-[6%] -bottom-[5%] h-[9%] bg-[radial-gradient(closest-side,oklch(0.21_0.03_268/0.28),transparent)]"
+        className="gift-shadow absolute inset-x-[6%] -bottom-[5%] h-[9%] bg-[radial-gradient(closest-side,oklch(0.21_0.03_268/0.28),transparent)]"
       />
+      {opening ? <GiftLightBehind /> : null}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: Tapping the gift is a pointer shortcut for the Auspacken button below it, which keyboards and screen readers use. */}
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: The gift is a picture, and the Auspacken button below it is the control. */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: The Auspacken button below the gift is the keyboard's way to open it. */}
@@ -95,18 +125,25 @@ export const Gift = ({
         onClick={canOpen ? onOpen : undefined}
       >
         {state !== 'closed' && recipient !== null ? (
-          <RevealedName animate={state === 'opening'} recipient={recipient} />
+          <RevealedName animate={opening} recipient={recipient} />
         ) : null}
         {state === 'open' ? null : (
-          <div aria-hidden="true" className="absolute inset-0">
-            <GiftWrapping />
-            <GiftRibbon />
+          <div aria-hidden="true" className="gift-wrapping absolute inset-0">
+            <GiftSurface />
+            {opening ? <GiftShards /> : null}
             <GiftTag name={viewer.name} paper={viewer.paper} />
             <GiftBow />
           </div>
         )}
-        {burst && state !== 'closed' ? <PaperSnippets /> : null}
       </div>
+      {opening ? <GiftLightInFront /> : null}
+      {burst && recipient !== null ? (
+        <GiftBurst
+          giftRef={giftRef}
+          onDone={onBurstDone}
+          paper={recipient.paper}
+        />
+      ) : null}
     </div>
   );
 };

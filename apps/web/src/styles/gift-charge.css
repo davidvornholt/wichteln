@@ -1,0 +1,146 @@
+/* The rumble of a gift charging, which gift.css plays on the gift's body
+   for --charge. */
+/* Faster and harder towards the burst, swelling as if the light inside
+   pushed at the paper, and snapping back as it breaks. */
+@keyframes gift-charge {
+  0% {
+    translate: 0 0;
+    rotate: 0deg;
+    scale: 1;
+  }
+  6.0% {
+    translate: 0.17% 0.06%;
+    rotate: -0.32deg;
+    scale: 1;
+  }
+  14.7% {
+    translate: -0.22% -0.12%;
+    rotate: 0.39deg;
+    scale: 1.001;
+  }
+  21.4% {
+    translate: 0.28% -0.08%;
+    rotate: -0.47deg;
+    scale: 1.003;
+  }
+  27.0% {
+    translate: -0.34% 0.04%;
+    rotate: 0.56deg;
+    scale: 1.005;
+  }
+  32.0% {
+    translate: 0.40% -0.18%;
+    rotate: -0.65deg;
+    scale: 1.007;
+  }
+  36.6% {
+    translate: -0.46% -0.23%;
+    rotate: 0.73deg;
+    scale: 1.009;
+  }
+  40.7% {
+    translate: 0.52% 0.09%;
+    rotate: -0.82deg;
+    scale: 1.012;
+  }
+  44.6% {
+    translate: -0.58% -0.11%;
+    rotate: 0.91deg;
+    scale: 1.014;
+  }
+  48.3% {
+    translate: 0.63% -0.33%;
+    rotate: -1deg;
+    scale: 1.017;
+  }
+  51.7% {
+    translate: -0.69% 0.29%;
+    rotate: 1.08deg;
+    scale: 1.02;
+  }
+  55.0% {
+    translate: 0.75% -0.09%;
+    rotate: -1.17deg;
+    scale: 1.023;
+  }
+  58.1% {
+    translate: -0.80% -0.24%;
+    rotate: 1.25deg;
+    scale: 1.026;
+  }
+  61.1% {
+    translate: 0.86% 0.47%;
+    rotate: -1.34deg;
+    scale: 1.029;
+  }
+  64.0% {
+    translate: -0.91% -0.28%;
+    rotate: 1.42deg;
+    scale: 1.032;
+  }
+  66.8% {
+    translate: 0.96% -0.11%;
+    rotate: -1.51deg;
+    scale: 1.035;
+  }
+  69.5% {
+    translate: -1.02% 0.42%;
+    rotate: 1.59deg;
+    scale: 1.038;
+  }
+  72.1% {
+    translate: 1.07% -0.56%;
+    rotate: -1.68deg;
+    scale: 1.041;
+  }
+  74.7% {
+    translate: -1.12% -0.23%;
+    rotate: 1.76deg;
+    scale: 1.045;
+  }
+  77.2% {
+    translate: 1.17% 0.20%;
+    rotate: -1.84deg;
+    scale: 1.048;
+  }
+  79.6% {
+    translate: -1.23% -0.61%;
+    rotate: 1.93deg;
+    scale: 1.051;
+  }
+  81.9% {
+    translate: 1.28% -0.57%;
+    rotate: -2.01deg;
+    scale: 1.055;
+  }
+  84.2% {
+    translate: -1.33% 0.17%;
+    rotate: 2.09deg;
+    scale: 1.058;
+  }
+  86.5% {
+    translate: 1.38% -0.37%;
+    rotate: -2.17deg;
+    scale: 1.062;
+  }
+  88.7% {
+    translate: -1.43% -0.78%;
+    rotate: 2.26deg;
+    scale: 1.065;
+  }
+  90.8% {
+    translate: 1.48% 0.50%;
+    rotate: -2.34deg;
+    scale: 1.069;
+  }
+  92.9% {
+    translate: -1.53% -0.17%;
+    rotate: 2.42deg;
+    scale: 1.072;
+  }
+  100% {
+    translate: 0 0;
+    rotate: 0deg;
+    scale: 1;
+  }
+}

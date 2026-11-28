@@ -8,7 +8,8 @@ import { buttonClass } from '../../../shared/ui/button-class';
 import { markUnwrapped } from '../server-fns';
 import type { SeasonView } from '../wish';
 import { Gift } from './gift';
-import { type GiftState, openingMilliseconds } from './gift-state';
+import type { GiftState } from './gift-state';
+import { openingMilliseconds, unwrapVibration } from './gift-timing';
 import { RecipientWishes } from './recipient-wishes';
 
 type TakingPart = Extract<SeasonView, { readonly kind: 'taking-part' }>;
@@ -48,6 +49,14 @@ const EmptyOwnList = () => (
   </aside>
 );
 
+// Phones that can vibrate feel the gift charge and burst. Others, such as
+// iPhones, simply don't.
+const vibrate = (pattern: ReadonlyArray<number>) => {
+  if (typeof navigator.vibrate === 'function') {
+    navigator.vibrate([...pattern]);
+  }
+};
+
 type TakingPartHomeProps = {
   readonly person: SignedInPerson;
   readonly view: TakingPart;
@@ -70,9 +79,17 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
   }, [state]);
 
   const open = () => {
-    // Without motion, nothing unwraps, so there is nothing to wait for.
+    // Without motion, nothing unwraps, so there is nothing to wait for and
+    // nothing bursts.
     setState(still ? 'open' : 'opening');
-    setBurst(true);
+    if (!still) {
+      setBurst(true);
+      vibrate(
+        unwrapVibration(
+          recipient === null ? 0 : Array.from(recipient.name).length,
+        ),
+      );
+    }
     if (!unwrapped) {
       // Remembering is a nicety. If it fails, the gift is wrapped again on
       // the next visit, which is the safe side to fail on.
@@ -90,6 +107,7 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
       </p>
       <Gift
         burst={burst}
+        onBurstDone={() => setBurst(false)}
         onOpen={open}
         recipient={recipient}
         state={state}
@@ -114,6 +132,7 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
                 icon={<RotateCcw aria-hidden="true" size={18} />}
                 onClick={() => {
                   setBurst(false);
+                  vibrate([]);
                   setState('closed');
                 }}
                 variant="quiet"

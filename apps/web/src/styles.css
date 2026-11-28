@@ -4,8 +4,12 @@
 @import "@fontsource-variable/atkinson-hyperlegible-next" layer(base);
 /* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
 @import "./styles/papers.css";
+/* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet holds only keyframes, which no layer orders. */
+@import "./styles/gift-charge.css";
 /* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
 @import "./styles/gift.css";
+/* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
+@import "./styles/gift-burst.css";
 /* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
 @import "./styles/motion.css";
 
