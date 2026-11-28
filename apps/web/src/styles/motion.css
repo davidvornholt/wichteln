@@ -1,0 +1,64 @@
+/* Page changes: the page slides up into place while the frame stays put, and
+   the marker over the current tab glides to the new one. */
+@layer components {
+  ::view-transition-old(root) {
+    animation: 180ms ease-in both page-out;
+  }
+
+  ::view-transition-new(root) {
+    animation: 360ms var(--ease-settle) both page-in;
+  }
+
+  ::view-transition-group(tab-marker) {
+    animation-duration: 420ms;
+    animation-timing-function: var(--ease-settle);
+  }
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Without motion, everything simply arrives: nothing moves, and nothing
+   waits for a step that no longer moves. This layer comes after all others,
+   so it wins over every animation and transition set in them. */
+@layer reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-delay: 0s;
+      animation-duration: 1ms;
+      animation-iteration-count: 1;
+      transition-delay: 0s;
+      transition-duration: 1ms;
+    }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none;
+    }
+
+    .gift-snippets {
+      display: none;
+    }
+  }
+}

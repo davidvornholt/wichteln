@@ -60,3 +60,11 @@ Operational scripts belong in the owning workspace's `package.json`. Root script
 Use Effect extensively wherever it makes sense, because it helps agents write more robust code. In an Effect v4 workspace, follow the agent guide shipped at `node_modules/effect/AGENTS.md`, because v4's API differs from the v3 most models learned.
 
 ## Project-specific rules
+
+Wichteln is David's family Secret Santa: each person opens a personal link, unwraps the name of the person they give to, and writes their own wish list. The family is small, and David runs every season from the admin command line.
+
+- Who gives to whom is the secret the app exists to keep. A person sees only their own recipient. Nothing prints, logs, or returns pairs, including the admin command line and the archive, which shows earlier wish lists but no pairs.
+- The repository is public. Family names, wishes, pairs, and links live only in the production database on prod-1. Tests, fixtures, and screenshots use made-up people.
+- A personal link signs in any number of devices and stays valid until it is revoked. Its secret travels in the URL fragment, which never reaches a server log, and the database keeps only hashes of link and session secrets.
+- The look is wrapping paper: every person has their own paper in `styles/papers.css`, which marks them wherever their name appears, and nothing has rounded corners. The unwrapping in `styles/gift.css` is timed in CSS, and React only switches the gift's `data-state`. Every animation also works without motion, through the reduced-motion layer in `styles/motion.css`.
+- Tests that need PostgreSQL read `DATABASE_URL`. Locally, run `bun install --frozen-lockfile`, `just dev-env-generate` and `just dev-db-start`, then `bun --env-file=.env.local test`. The accessibility suite starts its own database and server.

@@ -1,0 +1,311 @@
+/* The gift on the home page and its unwrapping. While the gift is closed it
+   shakes now and then. When it opens, every step starts at a delay after the
+   button press, so the sequence reads top to bottom: the tag drops and the
+   bow flies off, the ribbon slides away, the four flaps open towards the
+   viewer, and the card with the name rises with its letters. A gift that was
+   already unwrapped on this device starts open and skips all of it. */
+@layer components {
+  .gift {
+    --unwrap-ease: cubic-bezier(0.7, 0, 0.2, 1);
+    --flaps-start: 420ms;
+    --flap-stagger: 60ms;
+  }
+
+  .gift-body {
+    transition: translate 200ms ease-out;
+  }
+
+  .gift[data-state="closed"] .gift-body {
+    animation: gift-shake 5s ease-in-out 1.6s infinite;
+  }
+
+  @media (hover: hover) {
+    .gift[data-state="closed"] .gift-body[data-can-open="true"]:hover {
+      translate: 0 -6px;
+    }
+  }
+
+  /* The flap only turns. Its faces fade, because opacity on the flap itself
+     would flatten it and show the patterned front where the plain back
+     belongs. */
+  .gift-flap {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 950ms var(--unwrap-ease);
+    transition-delay: calc(
+      var(--flaps-start) +
+      var(--flap) *
+      var(--flap-stagger)
+    );
+  }
+
+  .gift-flap-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    clip-path: var(--front);
+    transition: opacity 260ms ease-in;
+    transition-delay: calc(
+      var(--flaps-start) +
+      640ms +
+      var(--flap) *
+      var(--flap-stagger)
+    );
+  }
+
+  /* The inside of wrapping paper is plain. The back face is the front face
+     mirrored, because it is turned half a turn before the flap opens. */
+  .gift-flap-back {
+    clip-path: var(--back);
+    transform: var(--back-turn);
+    background: linear-gradient(160deg, var(--color-card), var(--color-line));
+  }
+
+  /* Each flap is hinged on one edge and turns its free point towards the
+     viewer. */
+  .gift-flap[data-side="top"] {
+    --flap: 0;
+    --front: polygon(0 0, 100% 0, 50% 50%);
+    --back: polygon(0 100%, 100% 100%, 50% 50%);
+    --back-turn: rotateX(180deg);
+    transform-origin: 50% 0%;
+    transform: perspective(900px) rotateX(0deg);
+  }
+
+  .gift-flap[data-side="right"] {
+    --flap: 1;
+    --front: polygon(100% 0, 100% 100%, 50% 50%);
+    --back: polygon(0 0, 0 100%, 50% 50%);
+    --back-turn: rotateY(180deg);
+    transform-origin: 100% 50%;
+    transform: perspective(900px) rotateY(0deg);
+  }
+
+  .gift-flap[data-side="bottom"] {
+    --flap: 2;
+    --front: polygon(0 100%, 100% 100%, 50% 50%);
+    --back: polygon(0 0, 100% 0, 50% 50%);
+    --back-turn: rotateX(180deg);
+    transform-origin: 50% 100%;
+    transform: perspective(900px) rotateX(0deg);
+  }
+
+  .gift-flap[data-side="left"] {
+    --flap: 3;
+    --front: polygon(0 0, 0 100%, 50% 50%);
+    --back: polygon(100% 0, 100% 100%, 50% 50%);
+    --back-turn: rotateY(180deg);
+    transform-origin: 0% 50%;
+    transform: perspective(900px) rotateY(0deg);
+  }
+
+  .gift[data-state="opening"] .gift-flap-face {
+    opacity: 0;
+  }
+
+  .gift[data-state="opening"] .gift-flap[data-side="top"] {
+    transform: perspective(900px) rotateX(168deg);
+  }
+
+  .gift[data-state="opening"] .gift-flap[data-side="right"] {
+    transform: perspective(900px) rotateY(168deg);
+  }
+
+  .gift[data-state="opening"] .gift-flap[data-side="bottom"] {
+    transform: perspective(900px) rotateX(-168deg);
+  }
+
+  .gift[data-state="opening"] .gift-flap[data-side="left"] {
+    transform: perspective(900px) rotateY(-168deg);
+  }
+
+  .gift-creases {
+    transition: opacity 200ms linear var(--flaps-start);
+  }
+
+  .gift[data-state="opening"] .gift-creases {
+    opacity: 0;
+  }
+
+  /* The ribbon is white with a thin line in the person's colour, 13% of the
+     gift wide. */
+  .gift-ribbon {
+    position: absolute;
+    background-color: var(--color-card);
+    box-shadow: 0 0 0 1px oklch(0.21 0.03 268 / 0.25);
+    transition: translate 500ms cubic-bezier(0.6, 0, 0.9, 0.4) 160ms;
+  }
+
+  .gift-ribbon[data-side="top"],
+  .gift-ribbon[data-side="bottom"] {
+    inset-inline-start: 43.5%;
+    inline-size: 13%;
+    block-size: 50%;
+    background-image: linear-gradient(
+      90deg,
+      transparent calc(50% - 1.5px),
+      var(--color-accent) calc(50% - 1.5px) calc(50% + 1.5px),
+      transparent calc(50% + 1.5px)
+    );
+  }
+
+  .gift-ribbon[data-side="left"],
+  .gift-ribbon[data-side="right"] {
+    inset-block-start: 43.5%;
+    block-size: 13%;
+    inline-size: 50%;
+    background-image: linear-gradient(
+      0deg,
+      transparent calc(50% - 1.5px),
+      var(--color-accent) calc(50% - 1.5px) calc(50% + 1.5px),
+      transparent calc(50% + 1.5px)
+    );
+  }
+
+  .gift-ribbon[data-side="top"] {
+    inset-block-start: 0;
+  }
+
+  .gift-ribbon[data-side="bottom"] {
+    inset-block-end: 0;
+  }
+
+  .gift-ribbon[data-side="left"] {
+    inset-inline-start: 0;
+  }
+
+  .gift-ribbon[data-side="right"] {
+    inset-inline-end: 0;
+  }
+
+  .gift[data-state="opening"] .gift-ribbon[data-side="top"] {
+    translate: 0 -104%;
+  }
+
+  .gift[data-state="opening"] .gift-ribbon[data-side="bottom"] {
+    translate: 0 104%;
+  }
+
+  .gift[data-state="opening"] .gift-ribbon[data-side="left"] {
+    translate: -104% 0;
+  }
+
+  .gift[data-state="opening"] .gift-ribbon[data-side="right"] {
+    translate: 104% 0;
+  }
+
+  .gift-bow {
+    position: absolute;
+    inset-block-start: 38%;
+    inset-inline-start: 29%;
+    inline-size: 42%;
+    block-size: 24%;
+    filter: drop-shadow(0 2px 2px oklch(0.21 0.03 268 / 0.35));
+  }
+
+  .gift[data-state="opening"] .gift-bow {
+    animation: bow-off 550ms ease-in both;
+  }
+
+  /* The tag hangs from the knot: its box starts at the centre of the gift
+     and swings around its top edge. */
+  .gift-tag {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 37%;
+    inline-size: 26cqi;
+    block-size: 46cqi;
+    transform-origin: top;
+  }
+
+  .gift-tag-sway {
+    position: absolute;
+    inset: 0;
+    transform-origin: top;
+    animation: tag-sway 3.8s ease-in-out infinite;
+  }
+
+  .gift[data-state="opening"] .gift-tag {
+    animation: tag-off 450ms ease-in both;
+  }
+
+  /* Offcuts of everyone's paper. Each one's own distances, spin, and delay
+     come from paper-snippets.tsx. */
+  .gift-snippet {
+    position: absolute;
+    animation: snippet 1500ms both;
+  }
+}
+
+@keyframes gift-shake {
+  0%,
+  14%,
+  100% {
+    rotate: 0deg;
+  }
+  2.8% {
+    rotate: -2.4deg;
+  }
+  5.6% {
+    rotate: 2.2deg;
+  }
+  8.4% {
+    rotate: -1.4deg;
+  }
+  11.2% {
+    rotate: 1deg;
+  }
+}
+
+@keyframes bow-off {
+  30% {
+    transform: translateY(-8%) scale(1.18) rotate(-8deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-150%) scale(0.7) rotate(24deg);
+  }
+}
+
+@keyframes tag-off {
+  to {
+    opacity: 0;
+    transform: translateY(70%) rotate(18deg);
+  }
+}
+
+@keyframes tag-sway {
+  0%,
+  100% {
+    transform: rotate(-3.5deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+/* An offcut of paper flies out from the centre, turns, and falls. */
+@keyframes snippet {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1);
+  }
+  6% {
+    opacity: 1;
+  }
+  40% {
+    transform: translate(calc(var(--dx) * 0.8), var(--dy))
+      rotate(calc(var(--turn) * 0.45));
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), calc(var(--dy) + var(--fall)))
+      rotate(var(--turn));
+  }
+}

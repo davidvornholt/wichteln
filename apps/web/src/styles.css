@@ -1,0 +1,106 @@
+/* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
+@import "tailwindcss";
+@import "@fontsource-variable/big-shoulders-display" layer(base);
+@import "@fontsource-variable/atkinson-hyperlegible-next" layer(base);
+/* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
+@import "./styles/papers.css";
+/* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
+@import "./styles/gift.css";
+/* biome-ignore lint/nursery/useLayeredStyles: The imported stylesheet declares its own cascade layers. */
+@import "./styles/motion.css";
+
+@theme {
+  --font-display: "Big Shoulders Display Variable", "Arial Narrow", sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
+
+  /* The table the gifts are wrapped on, the white of tags and cards, and the
+     ink they are written with. */
+  --color-paper: oklch(0.962 0.007 255);
+  --color-card: oklch(0.995 0.002 255);
+  --color-line: oklch(0.85 0.014 262);
+  /* The edge of a form field, dark enough to find the field by. */
+  --color-field: oklch(0.6 0.02 262);
+  --color-ink: oklch(0.21 0.03 268);
+  --color-ink-soft: oklch(0.42 0.025 268);
+  --color-wrap: oklch(0.27 0.035 268);
+
+  /* One wrapping paper per person: a colour and a deeper tone for its
+     pattern. The paper marks that person wherever their name appears. */
+  --color-kirsch: oklch(0.56 0.205 24);
+  --color-kirsch-deep: oklch(0.49 0.19 22);
+  --color-tanne: oklch(0.47 0.09 172);
+  --color-tanne-deep: oklch(0.41 0.08 174);
+  --color-kobalt: oklch(0.49 0.185 264);
+  --color-kobalt-deep: oklch(0.6 0.15 262);
+  --color-senf: oklch(0.82 0.15 86);
+  --color-senf-deep: oklch(0.74 0.15 78);
+  --color-pflaume: oklch(0.45 0.14 340);
+  --color-pflaume-deep: oklch(0.39 0.13 342);
+
+  /* The signed-in person's colour, set by data-accent on their frame. */
+  --color-accent: var(--color-ink);
+
+  --radius-*: initial;
+  --ease-unwrap: cubic-bezier(0.7, 0, 0.2, 1);
+  --ease-settle: cubic-bezier(0.2, 0.9, 0.25, 1.15);
+}
+
+@layer base {
+  * {
+    border-radius: 0;
+  }
+
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-block-size: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+
+  [data-on-dark] :focus-visible,
+  [data-on-dark]:focus-visible {
+    outline-color: var(--color-paper);
+  }
+
+  ::selection {
+    background: var(--color-senf);
+    color: var(--color-ink);
+  }
+
+  /* The signed-in person's frame takes the colour of their paper. */
+  [data-accent="kirsch"] {
+    --color-accent: var(--color-kirsch);
+  }
+
+  [data-accent="tanne"] {
+    --color-accent: var(--color-tanne);
+  }
+
+  [data-accent="kobalt"] {
+    --color-accent: var(--color-kobalt);
+  }
+
+  [data-accent="senf"] {
+    --color-accent: var(--color-senf);
+  }
+
+  [data-accent="pflaume"] {
+    --color-accent: var(--color-pflaume);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

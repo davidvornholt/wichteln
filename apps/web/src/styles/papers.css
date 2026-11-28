@@ -1,0 +1,153 @@
+/* Wrapping papers. Each sets its colour, the pattern drawn in its deeper
+   tone, and the colour text needs on top of it. --tile scales the pattern,
+   so a small swatch shows the same paper as a whole gift. */
+@layer components {
+  .paper {
+    --tile: 1;
+    background-color: var(--paper-base);
+    color: var(--paper-on);
+  }
+
+  .paper[data-paper="kirsch"] {
+    --paper-base: var(--color-kirsch);
+    --paper-deep: var(--color-kirsch-deep);
+    --paper-on: var(--color-card);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent 0 calc(var(--tile) * 14px),
+      var(--paper-deep) calc(var(--tile) * 14px) calc(var(--tile) * 28px)
+    );
+  }
+
+  .paper[data-paper="tanne"] {
+    --paper-base: var(--color-tanne);
+    --paper-deep: var(--color-tanne-deep);
+    --paper-on: var(--color-card);
+    background-image:
+      linear-gradient(135deg, var(--paper-deep) 25%, transparent 25%),
+      linear-gradient(225deg, var(--paper-deep) 25%, transparent 25%),
+      linear-gradient(315deg, var(--paper-deep) 25%, transparent 25%),
+      linear-gradient(45deg, var(--paper-deep) 25%, transparent 25%);
+    background-position:
+      calc(var(--tile) * -16px) 0,
+      calc(var(--tile) * -16px) 0,
+      0 0,
+      0 0;
+    background-size: calc(var(--tile) * 32px) calc(var(--tile) * 32px);
+  }
+
+  .paper[data-paper="kobalt"] {
+    --paper-base: var(--color-kobalt);
+    --paper-deep: var(--color-kobalt-deep);
+    --paper-on: var(--color-card);
+    background-image:
+      radial-gradient(
+        circle,
+        var(--paper-deep) calc(var(--tile) * 4px),
+        transparent calc(var(--tile) * 4.6px)
+      ),
+      radial-gradient(
+        circle,
+        var(--paper-deep) calc(var(--tile) * 4px),
+        transparent calc(var(--tile) * 4.6px)
+      );
+    background-position:
+      0 0,
+      calc(var(--tile) * 12px) calc(var(--tile) * 12px);
+    background-size: calc(var(--tile) * 24px) calc(var(--tile) * 24px);
+  }
+
+  .paper[data-paper="senf"] {
+    --paper-base: var(--color-senf);
+    --paper-deep: oklch(from var(--color-senf-deep) l c h / 0.55);
+    --paper-on: var(--color-ink);
+    background-image:
+      linear-gradient(90deg, var(--paper-deep) 50%, transparent 50%),
+      linear-gradient(0deg, var(--paper-deep) 50%, transparent 50%);
+    background-size: calc(var(--tile) * 30px) calc(var(--tile) * 30px);
+  }
+
+  .paper[data-paper="pflaume"] {
+    --paper-base: var(--color-pflaume);
+    --paper-deep: var(--color-pflaume-deep);
+    --paper-on: var(--color-card);
+    background-image:
+      linear-gradient(
+        45deg,
+        var(--paper-deep) 25%,
+        transparent 25% 75%,
+        var(--paper-deep) 75%
+      ),
+      linear-gradient(
+        45deg,
+        var(--paper-deep) 25%,
+        transparent 25% 75%,
+        var(--paper-deep) 75%
+      );
+    background-position:
+      0 0,
+      calc(var(--tile) * 14px) calc(var(--tile) * 14px);
+    background-size: calc(var(--tile) * 28px) calc(var(--tile) * 28px);
+  }
+
+  /* The paper a gift is wrapped in before anyone knows whose it is. */
+  .paper[data-paper="wrap"] {
+    --paper-base: var(--color-wrap);
+    --paper-on: var(--color-card);
+    background-image: radial-gradient(
+      circle,
+      oklch(1 0 0 / 0.2) calc(var(--tile) * 1.3px),
+      transparent calc(var(--tile) * 1.8px)
+    );
+    background-size: calc(var(--tile) * 13px) calc(var(--tile) * 13px);
+  }
+
+  /* A gift tag: chamfered on the side where its string would be, with the
+     punched hole the string runs through. */
+  .tag-shape {
+    --cut: 14px;
+    clip-path: polygon(
+      var(--cut) 0,
+      100% 0,
+      100% 100%,
+      var(--cut) 100%,
+      0 calc(100% - var(--cut)),
+      0 var(--cut)
+    );
+    mask: radial-gradient(
+      circle 5px at calc(var(--cut) + 4px) 50%,
+      transparent 4.5px,
+      oklch(0 0 0) 5px
+    );
+  }
+
+  /* The tag that hangs from a gift's bow, by a hole punched through its top.
+     It is measured in the gift's width so it scales with the gift. */
+  .hanging-tag {
+    --cut: 4.5cqi;
+    clip-path: polygon(
+      var(--cut) 0,
+      calc(100% - var(--cut)) 0,
+      100% var(--cut),
+      100% 100%,
+      0 100%,
+      0 var(--cut)
+    );
+    mask: radial-gradient(
+      circle at 50% 4.5cqi,
+      transparent 1.4cqi,
+      oklch(0 0 0) calc(1.4cqi + 0.5px)
+    );
+  }
+
+  /* A name set as large as its box allows. --letters is the name's length;
+     the condensed display face is a little under half an em wide. */
+  .fit-name {
+    container-type: inline-size;
+  }
+
+  .fit-name > span {
+    display: block;
+    font-size: min(42cqi, calc(100cqi / (var(--letters) * 0.5)));
+  }
+}

@@ -1,0 +1,156 @@
+name: Publish container
+
+# Each push to main publishes the commit's image while Standards runs. The
+# gate records whether Standards passed on this exact commit, because a squash
+# commit on main is new and the pull request's checks do not cover it; only an
+# image whose gate passed may go to production. Wichteln has no pull request
+# previews, because it holds family data, so this workflow runs for main only.
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      gated-sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - name: Require the standards gate for this exact commit
+        id: gate
+        env:
+          GATE_JOB: check
+          GATE_WORKFLOW: standards.yml
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          deadline=$(($(date -u +%s) + 2400))
+          while :; do
+            run=$(gh api \
+              "repos/$REPOSITORY/actions/workflows/$GATE_WORKFLOW/runs?head_sha=$SHA&event=push&per_page=1" \
+              --jq '.workflow_runs[0] // empty')
+            if [ -n "$run" ] && [ "$(jq -er .status <<<"$run")" = completed ]; then
+              break
+            fi
+            if [ "$(date -u +%s)" -ge "$deadline" ]; then
+              echo "::error::The $GATE_WORKFLOW gate did not complete for $SHA within the deadline"
+              exit 1
+            fi
+            sleep 20
+          done
+
+          test "$(jq -er .head_sha <<<"$run")" = "$SHA"
+          conclusion=$(jq -er .conclusion <<<"$run")
+          if [ "$conclusion" != success ]; then
+            echo "::error::The $GATE_WORKFLOW gate concluded $conclusion for $SHA"
+            exit 1
+          fi
+
+          run_id=$(jq -er .id <<<"$run")
+          job=$(gh api --paginate "repos/$REPOSITORY/actions/runs/$run_id/jobs" \
+            --jq ".jobs[] | select(.name == \"$GATE_JOB\") | .conclusion")
+          if [ "$job" != success ]; then
+            echo "::error::The $GATE_JOB job of run $run_id concluded ${job:-nothing} for $SHA"
+            exit 1
+          fi
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+  # Runs in parallel with the gate. A pushed image runs nowhere until it is
+  # released.
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:18-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      # The registry cache exporter needs a BuildKit container builder.
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # The default Git context builds exactly github.sha. The cache lives in
+      # the registry under the buildcache tag, outside the shared Actions
+      # cache quota; nothing deploys that tag.
+      - name: Build and push the commit image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          push: true
+          provenance: false
+          tags: ghcr.io/davidvornholt/wichteln:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=registry,ref=ghcr.io/davidvornholt/wichteln:buildcache
+          cache-to: type=registry,ref=ghcr.io/davidvornholt/wichteln:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
+
+      # The gate runs the built app outside this image, so only this proves
+      # the pushed image itself migrates, serves, and stops on SIGTERM, which
+      # the release relies on. It runs the way prod-1 does: read-only, without
+      # capabilities, as the app's user.
+      - name: Smoke-test the pushed image
+        env:
+          IMAGE: ghcr.io/davidvornholt/wichteln@${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE"
+          hardened=(--network host --read-only '--tmpfs=/tmp:rw,nosuid,nodev,noexec,size=64m'
+            --cap-drop ALL --security-opt no-new-privileges --user 2026:2026
+            --env DATABASE_URL=postgresql://app:app@127.0.0.1:5432/app --env HOME=/tmp)
+
+          for _ in 1 2; do
+            docker run --rm "${hardened[@]}" "$IMAGE" \
+              bun run --cwd packages/db db:migrate:production
+          done
+
+          container=wichteln-smoke
+          trap 'docker rm --force "$container" >/dev/null 2>&1 || true' EXIT
+          docker run --detach --name "$container" "${hardened[@]}" \
+            --env PORT=3100 --env PUBLIC_ORIGIN=https://wichteln.vornholt.online \
+            "$IMAGE"
+
+          response=
+          for _ in $(seq 1 60); do
+            if response=$(curl --fail --silent --show-error \
+              http://127.0.0.1:3100/api/health); then
+              break
+            fi
+            sleep 0.5
+          done
+          test "$(jq -er .status <<<"$response")" = ok
+
+          docker stop --time 10 "$container" >/dev/null
+          code=$(docker inspect "$container" --format '{{.State.ExitCode}}')
+          if [ "$code" != 0 ] && [ "$code" != 143 ]; then
+            docker logs "$container"
+            echo "::error::The app exited with $code on SIGTERM instead of 0 or 143"
+            exit 1
+          fi
