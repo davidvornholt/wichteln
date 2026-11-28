@@ -73,7 +73,9 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:18-alpine
+        # GitHub-hosted runners pull from Docker Hub, as the Standards gate
+        # does there. Anonymous pulls from ECR Public hit its data limit.
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: app
