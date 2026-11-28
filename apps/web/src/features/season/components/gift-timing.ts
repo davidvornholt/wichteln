@@ -2,8 +2,9 @@ import type { CSSProperties } from 'react';
 
 // The moments of the unwrapping, in milliseconds after the press. The gift
 // swells and rumbles while cracks of light spread through its paper, then
-// bursts, and the name slams in letter by letter. styles/gift.css reads the
-// same moments from the custom properties of timingStyle.
+// bursts, and the name slams in letter by letter. The styles read the same
+// moments from the custom properties of timingStyle, and the confetti and the
+// vibration from here, so all of them stay in step.
 export const chargeMilliseconds = 1150;
 export const burstMilliseconds = chargeMilliseconds;
 const nameAfterBurst = 260;
@@ -19,6 +20,7 @@ export const timingStyle = {
   '--charge': `${chargeMilliseconds}ms`,
   '--burst': `${burstMilliseconds}ms`,
   '--name': `${nameMilliseconds}ms`,
+  '--letter-stagger': `${letterStaggerMilliseconds}ms`,
 } as CSSProperties;
 
 // The phone's vibration through the unwrapping, as alternating on and off

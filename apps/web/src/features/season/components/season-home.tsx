@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router';
 import { Gift as GiftIcon, PenLine, RotateCcw } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import type { SignedInPerson } from '../../../shared/auth/signed-in-person';
 import { Button } from '../../../shared/ui/button';
@@ -57,6 +57,11 @@ const vibrate = (pattern: ReadonlyArray<number>) => {
   }
 };
 
+// Asked at the moment of unwrapping rather than when the page loads, so a
+// setting changed in between counts.
+const prefersStillness = () =>
+  globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 type TakingPartHomeProps = {
   readonly person: SignedInPerson;
   readonly view: TakingPart;
@@ -66,7 +71,6 @@ type TakingPartHomeProps = {
 const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
   const [state, setState] = useState<GiftState>(unwrapped ? 'open' : 'closed');
   const [burst, setBurst] = useState(false);
-  const still = useReducedMotion() === true;
   const router = useRouter();
   const { recipient } = view;
 
@@ -78,9 +82,19 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
     return () => clearTimeout(done);
   }, [state]);
 
+  // The vibration stops with the burst, also when the person wraps the gift
+  // again or leaves the page before it ends.
+  useEffect(() => {
+    if (!burst) {
+      return;
+    }
+    return () => vibrate([]);
+  }, [burst]);
+
   const open = () => {
     // Without motion, nothing unwraps, so there is nothing to wait for and
     // nothing bursts.
+    const still = prefersStillness();
     setState(still ? 'open' : 'opening');
     if (!still) {
       setBurst(true);
@@ -132,7 +146,6 @@ const TakingPartHome = ({ person, view, unwrapped }: TakingPartHomeProps) => {
                 icon={<RotateCcw aria-hidden="true" size={18} />}
                 onClick={() => {
                   setBurst(false);
-                  vibrate([]);
                   setState('closed');
                 }}
                 variant="quiet"

@@ -40,12 +40,15 @@ type RevealedNameProps = {
   readonly recipient: Person;
   // False when the gift was already unwrapped on this device.
   readonly animate: boolean;
+  // True until the burst has ended, so the sheen after a long name still
+  // runs its course once the gift counts as open.
+  readonly sheen: boolean;
 };
 
 // What the opened gift holds: the name of the person to give to, on a card in
 // their own wrapping paper, which floods out from the middle as the gift
 // bursts.
-const RevealedName = ({ recipient, animate }: RevealedNameProps) => (
+const RevealedName = ({ recipient, animate, sheen }: RevealedNameProps) => (
   <Paper
     className="gift-flood absolute inset-0"
     paper={recipient.paper}
@@ -71,7 +74,7 @@ const RevealedName = ({ recipient, animate }: RevealedNameProps) => (
         />
       </FitName>
     </motion.div>
-    {animate ? <span aria-hidden="true" className="gift-sheen" /> : null}
+    {sheen ? <span aria-hidden="true" className="gift-sheen" /> : null}
   </Paper>
 );
 
@@ -86,10 +89,8 @@ const giftStyle = (recipient: Person | null): CSSProperties =>
   }) as CSSProperties;
 
 // The gift on the home page. It stays wrapped, shaking now and then, until the
-// person unwraps it. Then it swells and rumbles while cracks of light in the
-// colour of the paper inside run through its wrapping, bursts into shards,
-// and the name inside slams down letter by letter. styles/gift.css holds the
-// choreography and gift-burst.tsx what happens beyond the gift's box.
+// person unwraps it. styles/gift.css holds the choreography and
+// gift-burst.tsx what happens beyond the gift's box.
 export const Gift = ({
   state,
   viewer,
@@ -125,7 +126,7 @@ export const Gift = ({
         onClick={canOpen ? onOpen : undefined}
       >
         {state !== 'closed' && recipient !== null ? (
-          <RevealedName animate={opening} recipient={recipient} />
+          <RevealedName animate={opening} recipient={recipient} sheen={burst} />
         ) : null}
         {state === 'open' ? null : (
           <div aria-hidden="true" className="gift-wrapping absolute inset-0">

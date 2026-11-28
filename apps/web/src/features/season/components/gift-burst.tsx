@@ -21,6 +21,7 @@ import {
 import {
   burstMilliseconds,
   nameMilliseconds,
+  openingMilliseconds,
   timingStyle,
 } from './gift-timing';
 
@@ -84,15 +85,21 @@ const useConfetti = (
     const element = canvasRef.current;
     const context = element?.getContext('2d');
     if (element === null || context === null || context === undefined) {
-      return;
+      // Without a canvas there is no confetti to wait for, and the burst
+      // ends once the room has lifted.
+      const lifted = setTimeout(() => doneRef.current(), openingMilliseconds);
+      return () => clearTimeout(lifted);
     }
     const ratio = Math.min(window.devicePixelRatio || 1, densest);
-    const stage: Stage = {
-      width: window.innerWidth,
-      height: window.innerHeight,
+    let stage: Stage = { width: 0, height: 0 };
+    // The canvas covers the screen, also when the phone turns.
+    const cover = () => {
+      stage = { width: window.innerWidth, height: window.innerHeight };
+      element.width = Math.round(stage.width * ratio);
+      element.height = Math.round(stage.height * ratio);
     };
-    element.width = Math.round(stage.width * ratio);
-    element.height = Math.round(stage.height * ratio);
+    cover();
+    window.addEventListener('resize', cover);
     const palette = paletteFor(paper);
     const random = seededRandom(Date.now());
     let particles: Array<Particle> = [];
@@ -138,6 +145,7 @@ const useConfetti = (
       nameMilliseconds + cannonsAfterName,
     );
     return () => {
+      window.removeEventListener('resize', cover);
       clearTimeout(burst);
       clearTimeout(cannons);
       cancelAnimationFrame(frame);

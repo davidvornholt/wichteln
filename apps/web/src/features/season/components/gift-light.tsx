@@ -1,5 +1,4 @@
 // The light of the burst inside the gift's own place on the page.
-// styles/gift.css times all of it.
 
 const waves = ['light', 'glow', 'thin'] as const;
 
