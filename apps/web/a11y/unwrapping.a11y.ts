@@ -10,14 +10,13 @@ const turned = { width: 844, height: 390 };
 const pastTheBurst = 1800;
 const ownList = /^Dein Wunschzettel/u;
 
-// Where the page's vibrations are recorded.
 type Recording = typeof globalThis & {
   vibrations?: Array<ReadonlyArray<number>>;
+  sheenEnded?: boolean;
 };
 
 test.use({ viewport: phone });
 
-// Records every vibration the page asks for, so a test can read them.
 const recordVibrations = async (page: playwright.Page) => {
   await page.addInitScript(() => {
     const recording: Recording = globalThis;
@@ -36,6 +35,20 @@ const recordVibrations = async (page: playwright.Page) => {
 
 const vibrationsIn = (page: playwright.Page) =>
   page.evaluate(() => (globalThis as Recording).vibrations ?? []);
+
+const watchTheSheen = async (page: playwright.Page) => {
+  await page.addInitScript(() => {
+    const recording: Recording = globalThis;
+    document.addEventListener('animationend', (event) => {
+      if (event.animationName === 'sheen') {
+        recording.sheenEnded = true;
+      }
+    });
+  });
+};
+
+const sheenEnded = (page: playwright.Page) =>
+  page.evaluate(() => (globalThis as Recording).sheenEnded === true);
 
 const unwrap = (page: playwright.Page) =>
   page.getByRole('button', { name: 'Auspacken' }).click();
@@ -114,12 +127,13 @@ test('turning the phone while the gift charges turns the confetti with it', asyn
 test('the sheen runs its course after the gift counts as open', async ({
   page,
 }) => {
+  await watchTheSheen(page);
   await signIn(page, 'Mara');
   await unwrap(page);
   await expect(
     page.getByRole('button', { name: 'Noch einmal einpacken' }),
   ).toBeVisible();
-  await expect(page.locator('.gift-sheen')).toBeAttached();
+  await expect.poll(() => sheenEnded(page)).toBe(true);
 });
 
 test('without a canvas the gift still opens and the room lifts', async ({
@@ -128,10 +142,12 @@ test('without a canvas the gift still opens and the room lifts', async ({
   await page.addInitScript(() => {
     HTMLCanvasElement.prototype.getContext = () => null;
   });
+  await watchTheSheen(page);
   await signIn(page, 'Mara');
   await unwrap(page);
   await expect(
     page.getByRole('heading', { name: 'Wunschzettel von Maximilian' }),
   ).toBeVisible();
   await expect(page.locator('.gift-room')).toHaveCount(0);
+  await expect.poll(() => sheenEnded(page)).toBe(true);
 });

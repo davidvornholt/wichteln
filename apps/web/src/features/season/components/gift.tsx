@@ -1,6 +1,6 @@
 import type { Paper as PaperName } from '@wichteln/db/papers';
 import { motion } from 'motion/react';
-import { type CSSProperties, useRef } from 'react';
+import { type CSSProperties, useRef, useState } from 'react';
 import { FitName } from '../../../shared/ui/fit-name';
 import { Paper } from '../../../shared/ui/paper';
 import { GiftBurst } from './gift-burst';
@@ -40,43 +40,46 @@ type RevealedNameProps = {
   readonly recipient: Person;
   // False when the gift was already unwrapped on this device.
   readonly animate: boolean;
-  // True until the burst has ended, so the sheen after a long name still
-  // runs its course once the gift counts as open.
-  readonly sheen: boolean;
 };
 
 // What the opened gift holds: the name of the person to give to, on a card in
 // their own wrapping paper, which floods out from the middle as the gift
 // bursts.
-const RevealedName = ({ recipient, animate, sheen }: RevealedNameProps) => (
-  <Paper
-    className="gift-flood absolute inset-0"
-    paper={recipient.paper}
-    tile={1.1}
-  >
-    <motion.div
-      animate={{ scale: 1, opacity: 1, rotate: 0 }}
-      className="absolute inset-[9%] flex flex-col justify-center bg-card px-[7%] text-ink shadow-[0_10px_30px_oklch(0.21_0.03_268/0.25)]"
-      initial={animate ? cardStart : false}
-      transition={{
-        ...cardSpring,
-        delay: inSeconds(burstMilliseconds + cardAfterBurst),
-      }}
+const RevealedName = ({ recipient, animate }: RevealedNameProps) => {
+  // A name unwrapped on this page gets the sheen once the last letter has
+  // landed, and keeps it until the gift is wrapped again, so the sheen after
+  // a long name runs its course after the gift counts as open.
+  const [sheen] = useState(animate);
+  return (
+    <Paper
+      className="gift-flood absolute inset-0"
+      paper={recipient.paper}
+      tile={1.1}
     >
-      <p className="font-bold text-[4cqi] text-ink-soft uppercase tracking-[0.14em]">
-        Du beschenkst
-      </p>
-      <FitName className="mt-[2cqi]" name={recipient.name}>
-        <SlammingLetters
-          animate={animate}
-          delay={inSeconds(nameMilliseconds)}
-          text={recipient.name}
-        />
-      </FitName>
-    </motion.div>
-    {sheen ? <span aria-hidden="true" className="gift-sheen" /> : null}
-  </Paper>
-);
+      <motion.div
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        className="absolute inset-[9%] flex flex-col justify-center bg-card px-[7%] text-ink shadow-[0_10px_30px_oklch(0.21_0.03_268/0.25)]"
+        initial={animate ? cardStart : false}
+        transition={{
+          ...cardSpring,
+          delay: inSeconds(burstMilliseconds + cardAfterBurst),
+        }}
+      >
+        <p className="font-bold text-[4cqi] text-ink-soft uppercase tracking-[0.14em]">
+          Du beschenkst
+        </p>
+        <FitName className="mt-[2cqi]" name={recipient.name}>
+          <SlammingLetters
+            animate={animate}
+            delay={inSeconds(nameMilliseconds)}
+            text={recipient.name}
+          />
+        </FitName>
+      </motion.div>
+      {sheen ? <span aria-hidden="true" className="gift-sheen" /> : null}
+    </Paper>
+  );
+};
 
 const giftStyle = (recipient: Person | null): CSSProperties =>
   ({
@@ -126,7 +129,7 @@ export const Gift = ({
         onClick={canOpen ? onOpen : undefined}
       >
         {state !== 'closed' && recipient !== null ? (
-          <RevealedName animate={opening} recipient={recipient} sheen={burst} />
+          <RevealedName animate={opening} recipient={recipient} />
         ) : null}
         {state === 'open' ? null : (
           <div aria-hidden="true" className="gift-wrapping absolute inset-0">
