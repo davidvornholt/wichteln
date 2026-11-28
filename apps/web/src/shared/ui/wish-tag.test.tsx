@@ -19,3 +19,10 @@ it('a stored link that is no web page is shown as text only', () => {
   expect(markup).not.toContain('href');
   expect(markup).toContain('mailto:mara@example.com');
 });
+
+it('a stored link without both slashes is shown as text only', () => {
+  const markup = tagWithLink('https:example.com/item');
+  expect(markup).not.toContain('<a');
+  expect(markup).not.toContain('href');
+  expect(markup).toContain('https:example.com/item');
+});

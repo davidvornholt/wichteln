@@ -86,14 +86,12 @@ it('the draw comes in on stdin and never shows up in the output', async () => {
 });
 
 it('a draw passed as arguments is refused', async () => {
+  const before = await recipients();
   const { output, exitCode } = await runAdmin(
     ['season', 'pairs', '2026', 'Mara=Zoë', 'Zoë=Jonas', 'Jonas=Mara'],
     '',
   );
   expect(exitCode).toBe(1);
   expect(output).toContain('Befehle:');
-  expect(await recipients()).toContainEqual({
-    giver: 'Mara',
-    recipient: 'Jonas',
-  });
+  expect(await recipients()).toEqual(before);
 });

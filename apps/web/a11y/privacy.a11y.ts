@@ -2,12 +2,14 @@
 // between the server and the browser, or in a cookie another site can set.
 import type * as playwright from '@playwright/test';
 import { expect } from '@playwright/test';
+import { family, welcomePath } from './family';
 import { signIn, test } from './fixtures';
 
 const giftHeading = /^Dein Wichtel/u;
 const listHeading = /^Dein Wunschzettel/u;
 const sessionCookie = '__Host-wichteln_session';
 const noStore = 'private, no-store';
+const welcomeAddress = /\/willkommen$/u;
 
 // Which of the given texts the page's router still holds anywhere, in its
 // current matches or in the results it keeps for routes visited before.
@@ -114,4 +116,40 @@ test('the session cookie belongs to this host alone', async ({
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Wichteln' })).toBeVisible();
   await expect(page.getByRole('heading', { name: giftHeading })).toHaveCount(0);
+});
+
+test('of two links opened in one tab, the later one signs the device in', async ({
+  page,
+}) => {
+  const maraSecret = family.find(({ name }) => name === 'Mara')?.secret ?? '';
+  const isMaras = (request: playwright.Request) =>
+    request.postData()?.includes(maraSecret) === true;
+  const held = Promise.withResolvers<void>();
+  const released = Promise.withResolvers<void>();
+  // Mara's sign-in hangs on the way to the server until the test lets it go.
+  await page.route('**/_serverFn/**', async (route) => {
+    if (isMaras(route.request())) {
+      held.resolve();
+      await released.promise;
+    }
+    await route.fallback();
+  });
+  await page.goto(welcomePath('Mara'));
+  await held.promise;
+  await page.goto(welcomePath('Ida'));
+  await expect(page).toHaveURL(welcomeAddress);
+  const maraAnswered = page.waitForResponse((response) =>
+    isMaras(response.request()),
+  );
+  released.resolve();
+  await maraAnswered;
+  await expect(page.getByRole('heading', { name: 'Ida' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mara' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Zu deinem Geschenk' }).click();
+  await expect(page.getByRole('heading', { name: giftHeading })).toBeVisible();
+  // A new document knows only the session cookie.
+  await page.reload();
+  await expect(
+    page.getByRole('button', { name: 'Angemeldet als Ida' }),
+  ).toBeVisible();
 });

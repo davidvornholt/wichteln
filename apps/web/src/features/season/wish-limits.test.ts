@@ -13,4 +13,5 @@ it('only web pages count as links', () => {
   expect(isWebAddress(withWebScheme('kein Link'))).toBe(false);
   expect(isWebAddress(withWebScheme('mailto:mara@example.com'))).toBe(false);
   expect(isWebAddress(withWebScheme('example.com:abc/item'))).toBe(false);
+  expect(isWebAddress(withWebScheme('https:example.com/item'))).toBe(false);
 });

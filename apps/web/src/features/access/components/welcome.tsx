@@ -37,16 +37,20 @@ const problems = {
 // log, takes it out of the address bar and the history, and signs in with it.
 // The result is kept, because the secret is gone from the address once read
 // and React may run the effect that asks for it twice. A link opened again in
-// the same tab only brings a new fragment, which starts a new sign-in.
+// the same tab only brings a new fragment, which starts a new sign-in. It
+// waits for the one before it, because each sets the session cookie: run at
+// once, the earlier one could answer last and sign the device in as someone
+// other than the person greeted.
 let arrival: Promise<Arrival> | undefined;
 const arrive = (): Promise<Arrival> => {
   const { location, history } = globalThis;
   const secret = location.hash.slice(1);
   if (secret !== '') {
     history.replaceState(null, '', location.pathname);
-    arrival = redeemInvitation({ data: { token: secret } }).catch(
-      () => ({ kind: 'failed' }) as const,
-    );
+    // The previous sign-in never rejects, because it ends in its own catch.
+    arrival = (arrival ?? Promise.resolve())
+      .then(() => redeemInvitation({ data: { token: secret } }))
+      .catch(() => ({ kind: 'failed' }) as const);
   }
   arrival ??= Promise.resolve({ kind: 'incomplete' } as const);
   return arrival;

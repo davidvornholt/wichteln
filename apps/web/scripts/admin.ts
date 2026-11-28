@@ -1,4 +1,5 @@
 import process from 'node:process';
+import { isatty } from 'node:tty';
 import { PgLive } from '@wichteln/db/client';
 import { type Paper, papers } from '@wichteln/db/papers';
 import { Effect, Layer } from 'effect';
@@ -9,6 +10,7 @@ import {
 } from '../src/features/admin/admin-repository';
 import type { Status } from '../src/features/admin/admin-status';
 import { decodeImportFile } from '../src/features/admin/import-file';
+import { readPipedInput } from '../src/features/admin/piped-input';
 import type { DatabaseError } from '../src/shared/database-error';
 import { publicOrigin } from '../src/shared/env/server';
 
@@ -16,7 +18,7 @@ const usage = `Befehle:
   status
   person add <Name> [${papers.join('|')}]
   season open <Jahr> <Name>...
-  season pairs <Jahr>, dann je Zeile <Schenkende>=<Beschenkte> und Strg+D
+  season pairs <Jahr> < paare.txt, je Zeile <Schenkende>=<Beschenkte>
   link issue <Name>
   link revoke <Name>
   import < datei.json`;
@@ -60,7 +62,7 @@ const parsePairs = (text: string) =>
     .filter((line) => line !== '')
     .map(parsePair);
 
-const readStdin = Effect.promise(() => Bun.stdin.text());
+const readStdin = readPipedInput(isatty(0), () => Bun.stdin.text());
 
 const statusLines = ({ people, seasons }: Status) => [
   ...people.map(
